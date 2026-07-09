@@ -11,7 +11,7 @@ import { ConfigService } from '../../shared/services/config.service';
 import { UsersService } from '../users/services/users.service';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenBlacklistService } from './token-blacklist.service';
-import { timingEquals } from 'src/utils/crypto';
+import { timingEquals } from '../../utils/crypto';
 
 const BCRYPT_ROUNDS = 12;
 
