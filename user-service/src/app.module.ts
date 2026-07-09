@@ -8,10 +8,12 @@ import { AppService } from './app.service';
 import { UsersModule } from './modules/users/users.module';
 import { ConfigService } from './shared/services/config.service';
 import { SharedModule } from './shared.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
     imports: [
         UsersModule,
+        AuthModule,
         TerminusModule,
         TypeOrmModule.forRootAsync({
             imports: [SharedModule],
