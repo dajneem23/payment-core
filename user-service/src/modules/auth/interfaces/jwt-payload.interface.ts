@@ -1,11 +1,17 @@
 /**
- * Claims we put in the JWT. `sub` (subject = user id) is the RFC 7519 registered
- * claim downstream services key off. `iss`/`aud`/`iat`/`exp` are added by
- * JwtService from config and validated on verify.
+ * JWT claims. RFC 7519 registered claims `iss`, `aud`, `iat`, `exp`, `jti` are
+ * set by the signer (issuer/audience from config; jti via the `jwtid` option;
+ * iat/exp automatically). We add two private claims:
+ *   - `email`  — convenience for the caller identity
+ *   - `type`   — 'access' | 'refresh' to stop a refresh token being used as an
+ *                access token and vice-versa
+ * `sub` (subject = user id) is what downstream services key off.
  */
 export interface JwtPayload {
-    sub: string; // user id
-    iss: string; // issuer (user's email)
-    jti?: string; // JWT ID (random UUID)
-    iat?: number; // issued at (seconds since epoch)
+    sub: string;
+    email: string;
+    type: 'access' | 'refresh';
+    jti?: string; // set by signer via jwtid
+    iat?: number; // set by signer
+    exp?: number; // set by signer
 }

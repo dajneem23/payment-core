@@ -9,9 +9,11 @@ import { UsersModule } from './modules/users/users.module';
 import { ConfigService } from './shared/services/config.service';
 import { SharedModule } from './shared.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { RedisModule } from './shared/redis/redis.module';
 
 @Module({
     imports: [
+        RedisModule,
         UsersModule,
         AuthModule,
         TerminusModule,

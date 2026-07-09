@@ -10,25 +10,29 @@ import * as crypto from 'crypto';
 import { ConfigService } from '../../shared/services/config.service';
 import { UsersService } from '../users/services/users.service';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { TokenBlacklistService } from './token-blacklist.service';
+import { timingEquals } from 'src/utils/crypto';
 
 const BCRYPT_ROUNDS = 12;
 
 /** Returned to the client after a successful login/register/refresh. */
 export interface TokenPair {
     accessToken: string;
-    expiresIn: number;          // seconds
+    expiresIn: number; // seconds
     refreshToken: string;
-    refreshExpiresIn: number;   // seconds
+    refreshExpiresIn: number; // seconds
 }
 
 /**
- * Authentication orchestrator — password hashing/verification, ES256 JWT
- * signing with access + refresh tokens, and token verification for Traefik
- * ForwardAuth.
+ * Authentication orchestrator — password hashing, ES256 JWT signing (access +
+ * refresh), rotation, and revocation.
  *
- * Refresh tokens are single-use: each call to `/auth/refresh` invalidates the
- * old refresh token and issues a new pair (rotation). The current token is
- * tracked as a SHA-256 hash in `user.hashedRefreshToken`.
+ * Two revocation mechanisms, because access and refresh tokens fail differently:
+ *  - Refresh tokens are single-use: each /auth/refresh rotates them; the current
+ *    one is tracked as a SHA-256 hash in user.hashedRefreshToken. Replay of an
+ *    old refresh token revokes the whole session.
+ *  - Access tokens are stateless and short-lived, so to revoke one before it
+ *    expires (logout) we blacklist its `jti` in Redis until its own expiry.
  */
 @Injectable()
 export class AuthService {
@@ -38,6 +42,7 @@ export class AuthService {
     constructor(
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
+        private readonly blacklist: TokenBlacklistService,
         configService: ConfigService,
     ) {
         this.accessExpiresIn = configService.jwtConfig.accessExpiresIn;
@@ -67,14 +72,7 @@ export class AuthService {
     }
 
     async refresh(refreshToken: string): Promise<TokenPair> {
-        let payload: JwtPayload & { type?: string };
-        try {
-            payload = await this.jwtService.verifyAsync<JwtPayload & { type?: string }>(
-                refreshToken,
-            );
-        } catch {
-            throw new UnauthorizedException('refresh token invalid or expired');
-        }
+        const payload = await this.verifyToken(refreshToken);
         if (payload.type !== 'refresh') {
             throw new UnauthorizedException('not a refresh token');
         }
@@ -82,61 +80,57 @@ export class AuthService {
         if (!user) {
             throw new UnauthorizedException('user not found');
         }
-        // Guard against replay: the presented token must match the stored hash.
-        // A stolen-and-replayed token after the legitimate owner rotated it will fail.
+        // doesn't, it was already rotated (possible theft) — revoke the session.
         const presentedHash = this.hashToken(refreshToken);
-        if (!user.hashedRefreshToken
-            || !crypto.timingSafeEqual(
-                Buffer.from(user.hashedRefreshToken, 'hex'),
-                Buffer.from(presentedHash, 'hex'),
-            )) {
-            // Token was already rotated — revoke all sessions (worst-case: theft).
+        if (
+            !user.hashedRefreshToken ||
+            !timingEquals(user.hashedRefreshToken, presentedHash)
+        ) {
             await this.usersService.clearRefreshToken(user.id);
             throw new UnauthorizedException('refresh token already used');
         }
-        return this.rotate(user, presentedHash);
+        return this.issuePair(user.id, user.email);
     }
 
-    async logout(userId: string) {
-        await this.usersService.clearRefreshToken(userId);
+    /** Logout: revoke the refresh token (DB) and blacklist the access token's
+     *  jti in Redis until it would have expired. */
+    async logout(accessToken: string): Promise<void> {
+        const payload = await this.verifyToken(accessToken).catch(() => null);
+        if (!payload) {
+            return;
+        }
+        await this.usersService.clearRefreshToken(payload.sub);
+        if (payload.jti && payload.exp) {
+            const ttl = payload.exp - Math.floor(Date.now() / 1000);
+            await this.blacklist.revoke(payload.jti, ttl);
+        }
     }
 
     /**
-     * Verify a token and return its payload. Called by the /auth/verify
-     * (Traefik ForwardAuth) endpoint. Throws 401 if invalid/expired so
-     * Traefik returns 401 to the client.
+     * Verify a token for the ForwardAuth path: valid signature AND not
+     * blacklisted. Throws 401 otherwise.
      */
     async verify(tokenValue: string): Promise<JwtPayload> {
+        const payload = await this.verifyToken(tokenValue);
+        if (await this.blacklist.isRevoked(payload.jti!)) {
+            throw new UnauthorizedException('token revoked');
+        }
+        return payload;
+    }
+
+    // ---- helpers -----------------------------------------------------------
+
+    private async verifyToken(token: string): Promise<JwtPayload> {
         try {
-            return await this.jwtService.verifyAsync<JwtPayload>(tokenValue);
+            return await this.jwtService.verifyAsync<JwtPayload>(token);
         } catch {
             throw new UnauthorizedException('token invalid or expired');
         }
     }
 
-    // ---- internal helpers --------------------------------------------------
-
     private async issuePair(userId: string, email: string): Promise<TokenPair> {
-        const accessToken = this.jwtService.sign(
-            {
-                sub: userId,
-                iss: email,
-                type: 'access',
-                jit: crypto.randomUUID(), // unique ID for this JWT (RFC 7519)
-                jat: Math.floor(Date.now() / 1000), // issued at (seconds since epoch)
-            },
-            { expiresIn: this.accessExpiresIn },
-        );
-        const refreshToken = this.jwtService.sign(
-            {
-                sub: userId,
-                iss: email,
-                type: 'refresh',
-                jit: crypto.randomUUID(), // unique ID for this JWT (RFC 7519)
-                jat: Math.floor(Date.now() / 1000), // issued at (seconds since epoch)
-            },
-            { expiresIn: this.refreshExpiresIn },
-        );
+        const accessToken = this.sign(userId, email, 'access', this.accessExpiresIn);
+        const refreshToken = this.sign(userId, email, 'refresh', this.refreshExpiresIn);
         await this.usersService.setRefreshToken(userId, this.hashToken(refreshToken));
         return {
             accessToken,
@@ -146,26 +140,16 @@ export class AuthService {
         };
     }
 
-    /** Rotate the refresh token: hash the new one, save it, issue new pair. */
-    private async rotate(
-        user: { id: string; email: string; hashedRefreshToken: string | null },
-        _oldHash: string,
-    ): Promise<TokenPair> {
-        const accessToken = this.jwtService.sign(
-            { sub: user.id, iss: user.email, type: 'access', jit: crypto.randomUUID(), jat: Math.floor(Date.now() / 1000) },
-            { expiresIn: this.accessExpiresIn },
+    private sign(
+        userId: string,
+        email: string,
+        type: 'access' | 'refresh',
+        expiresIn: number,
+    ): string {
+        return this.jwtService.sign(
+            { sub: userId, email, type },
+            { expiresIn, jwtid: crypto.randomUUID() },
         );
-        const refreshToken = this.jwtService.sign(
-            { sub: user.id, iss: user.email, type: 'refresh', jit: crypto.randomUUID(), jat: Math.floor(Date.now() / 1000) },
-            { expiresIn: this.refreshExpiresIn },
-        );
-        await this.usersService.setRefreshToken(user.id, this.hashToken(refreshToken));
-        return {
-            accessToken,
-            expiresIn: this.accessExpiresIn,
-            refreshToken,
-            refreshExpiresIn: this.refreshExpiresIn,
-        };
     }
 
     private hashToken(token: string): string {
