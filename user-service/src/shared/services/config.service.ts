@@ -105,6 +105,14 @@ export class ConfigService {
         };
     }
 
+    get redisConfig() {
+        return {
+            host: this.get('REDIS_HOST') || '127.0.0.1',
+            port: this.getNumber('REDIS_PORT') || 6379,
+            db: this.getNumber('REDIS_DB') || 0,
+        };
+    }
+
     get eventStoreConfig() {
         return {
             protocol: this.get('EVENT_STORE_PROTOCOL') || 'http',

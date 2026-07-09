@@ -25,14 +25,7 @@ export class JwtAuthGuard implements CanActivate {
         }
         const token = header.slice(7);
         const payload = await this.authService.verify(token);
-        //TODO: verify jti is not reused (refresh token rotation). This is a no-op for access tokens.
-
-        
-
         (req as any).user = payload; // set for @UserId() decorator
-
-
-
         return true;
     }
 }

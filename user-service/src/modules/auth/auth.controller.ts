@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Res, Headers } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Response } from 'express';
 
@@ -39,9 +39,10 @@ export class AuthController {
 
     @Post('logout')
     @UseGuards(JwtAuthGuard)
-    @ApiOperation({ summary: 'Revoke the current refresh token' })
-    async logout(@UserId() userId: string) {
-        await this.authService.logout(userId);
+    @ApiOperation({ summary: 'Revoke the refresh token + blacklist the access token' })
+    async logout(@Headers('authorization') authHeader: string) {
+        const accessToken = authHeader.slice('Bearer '.length);
+        await this.authService.logout(accessToken);
         return { revoked: true };
     }
 

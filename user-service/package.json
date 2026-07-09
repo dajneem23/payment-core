@@ -48,6 +48,7 @@
     "class-validator": "^0.14.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.4.2",
+    "ioredis": "^5.4.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "lodash": "^4.17.21",
