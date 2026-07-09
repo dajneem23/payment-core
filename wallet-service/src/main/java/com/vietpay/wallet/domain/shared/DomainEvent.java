@@ -1,6 +1,7 @@
 package com.vietpay.wallet.domain.shared;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -16,4 +17,9 @@ public interface DomainEvent {
 
     /** Stable event name used as the outbox {@code event_type}. */
     String eventType();
+
+    /**
+     * The event's wire payload as a flat map.
+     */
+    Map<String, Object> payload();
 }
