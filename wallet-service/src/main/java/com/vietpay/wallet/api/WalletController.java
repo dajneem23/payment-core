@@ -1,0 +1,41 @@
+package com.vietpay.wallet.api;
+
+import com.vietpay.wallet.api.dto.CreateWalletRequest;
+import com.vietpay.wallet.api.dto.WalletResponse;
+import com.vietpay.wallet.application.wallet.WalletService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+/** Wallet accounts: open a wallet and query its balance. */
+@RestController
+@RequestMapping("/api/v1/wallets")
+public class WalletController {
+
+    private final WalletService walletService;
+
+    public WalletController(WalletService walletService) {
+        this.walletService = walletService;
+    }
+
+    @PostMapping
+    public ResponseEntity<WalletResponse> create(@Valid @RequestBody CreateWalletRequest request) {
+        WalletResponse body = WalletResponse.from(walletService.create(request.currency()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public WalletResponse get(@PathVariable UUID id) {
+        return WalletResponse.from(walletService.get(id));
+    }
+}
