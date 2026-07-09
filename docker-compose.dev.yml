@@ -1,0 +1,50 @@
+# Dev overrides — layer on top of the base compose to expose ports to the host
+# for local tooling (psql/DBeaver, redis-cli, a Kafka client, direct service
+# hits bypassing Traefik). The base docker-compose.yml stays private-by-default.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# (Add --profile observability / --profile bi as usual; they still apply.)
+
+name: vietpay
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"   # psql -h localhost -U vietpay
+
+  redis:
+    ports:
+      - "6379:6379"   # redis-cli -h localhost
+
+  kafka:
+    # Add an EXTERNAL listener so host Kafka clients can reach the broker on
+    # localhost:29092 while services keep using kafka:9092 internally.
+    environment:
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+    ports:
+      - "29092:29092"
+
+  wallet-service:
+    ports:
+      - "8180:8080"   # hit the API / actuator / swagger-ui directly, bypassing Traefik
+
+  user-service:
+    environment:
+      NODE_ENV: development   # enables Swagger at /api/docs + verbose logging
+    ports:
+      - "3004:3004"
+
+  # fraud-service:
+  #   ports:
+  #     - "3001:3001"
+
+  # fx-service:
+  #   ports:
+  #     - "3002:3002"
+
+  # payment-gateway:
+  #   ports:
+  #     - "3000:3000"

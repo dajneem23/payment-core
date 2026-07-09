@@ -1,6 +1,10 @@
 # Traefik static configuration — the north-south edge router.
-# Dynamic routing is discovered from Docker labels on each service (see
-# docker-compose.yml), so adding a service needs no change here.
+#
+# We use the FILE provider (not the Docker provider) for dynamic routing:
+# OrbStack's daemon enforces a minimum Docker API version (1.40) and Traefik's
+# Docker client negotiates at 1.24, so label discovery fails. The file provider
+# sidesteps that entirely and needs no docker.sock mount (a security win).
+# Routers/services/middlewares live in ./traefik/dynamic/*.yml.
 
 entryPoints:
   web:
@@ -11,8 +15,8 @@ api:
   insecure: true          # dashboard on :8080 — dev convenience only
 
 providers:
-  docker:
-    exposedByDefault: false   # a service is only routed if it opts in via labels
+  file:
+    directory: /etc/traefik/dynamic
     watch: true
 
 log:

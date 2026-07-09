@@ -1,0 +1,44 @@
+# Traefik dynamic configuration (file provider). Declares the routing that used
+# to live in Docker labels. Services are reached by their compose DNS names;
+# OrbStack/Docker embedded DNS load-balances across replicas of each name.
+
+http:
+  routers:
+    # Public auth endpoints (login/register/refresh/verify) — NO forward-auth.
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      entryPoints: [web]
+      service: auth
+
+    # Wallet API — protected: validate JWT via ForwardAuth, strip spoofed header.
+    wallet:
+      rule: "PathPrefix(`/api/v1`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/actuator`)"
+      entryPoints: [web]
+      service: wallet
+      middlewares: [strip-inbound-headers, forward-auth]
+
+  services:
+    auth:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:3004"
+    wallet:
+      loadBalancer:
+        servers:
+          - url: "http://wallet-service:8080"
+
+  middlewares:
+    # Traefik calls user-service /auth/verify; on 200 it copies X-User-Id onto
+    # the upstream request. On 401 the request is rejected before wallet-service.
+    forward-auth:
+      forwardAuth:
+        address: "http://user-service:3004/auth/verify"
+        authResponseHeaders:
+          - X-User-Id
+
+    # Strip any client-supplied X-User-Id so a caller can't impersonate a user;
+    # only the ForwardAuth response is allowed to set it.
+    strip-inbound-headers:
+      headers:
+        customRequestHeaders:
+          X-User-Id: ""
