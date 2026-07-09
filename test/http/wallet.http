@@ -1,0 +1,56 @@
+### VietPay — Wallet flows (wallet-service via Traefik, JWT-protected)
+### Run `login` first; wallet calls read the token inline via
+### {{login.response.body.accessToken}}. (IntelliJ: use ...body.$.accessToken)
+
+@baseUrl = http://localhost
+@email = test2@vietpay.dev
+@password = Password123!
+
+### Login to obtain an access token
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Create a wallet (USD) -> 201
+# @name createWallet
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "currency": "USD"
+}
+
+### Get the wallet balance -> 200
+GET {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### Unsupported currency -> 422 (valid ISO but not offered)
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "currency": "KWD"
+}
+
+### Malformed currency -> 400 (not a real ISO code)
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "currency": "US"
+}
+
+### Unknown wallet -> 404
+GET {{baseUrl}}/api/v1/wallets/00000000-0000-0000-0000-000000000009
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### No token -> 401 (Traefik ForwardAuth rejects before wallet-service)
+GET {{baseUrl}}/api/v1/wallets/00000000-0000-0000-0000-000000000009

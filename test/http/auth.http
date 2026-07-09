@@ -1,0 +1,52 @@
+### VietPay — Auth flows (user-service via Traefik)
+### VS Code REST Client. Run `login` first; later requests read its response
+### inline via {{login.response.body.accessToken}} (no separate @-assignments,
+### which would otherwise be slurped into the request body).
+### IntelliJ HTTP Client: use {{login.response.body.$.accessToken}} instead.
+
+@baseUrl = http://localhost
+@email = test2@vietpay.dev
+@password = Password123!
+
+### Register a new user -> 201, returns access + refresh tokens
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "firstName": "Test",
+  "lastName": "User"
+}
+
+### Login -> 200, returns access + refresh tokens
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Verify (what Traefik ForwardAuth calls) -> 200 + X-User-Id header
+GET {{baseUrl}}/auth/verify
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### Refresh -> rotate the token pair (old refresh token becomes invalid)
+# @name refresh
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.refreshToken}}"
+}
+
+### Logout -> revoke refresh token (DB) + blacklist this access token's jti (Redis)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### After logout, verify must now fail with 401 (jti blacklisted)
+GET {{baseUrl}}/auth/verify
+Authorization: Bearer {{login.response.body.accessToken}}
