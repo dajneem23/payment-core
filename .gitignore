@@ -1,0 +1,32 @@
+# ---- build artifacts ----
+target/
+build/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---- node ----
+node_modules/
+dist/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---- env / secrets ----
+.env
+*.local
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# ---- os ----
+.DS_Store
+
+# ---- logs ----
+logs/
+*.log
