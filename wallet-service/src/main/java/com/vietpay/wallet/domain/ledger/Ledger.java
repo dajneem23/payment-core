@@ -1,8 +1,8 @@
 package com.vietpay.wallet.domain.ledger;
 
-import com.vietpay.wallet.domain.shared.Money;
 import com.vietpay.wallet.domain.wallet.WalletId;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -23,7 +23,11 @@ public interface Ledger {
      *  Simple limit/offset rather than a Spring Page type keeps the port pure. */
     List<LedgerEntry> history(WalletId walletId, int limit, int offset);
 
-    /** Reconstruct a wallet's balance from the journal: sum(credits) - sum(debits).
-     *  Used to prove the cached balance matches the ledger. */
-    Money reconciledBalance(WalletId walletId);
+    /**
+     * Net balance reconstructed from the journal: sum(credits) - sum(debits).
+     * Returns the raw amount; the caller pairs it with the wallet's currency
+     * (the ledger doesn't own currency for an empty wallet). Used to prove the
+     * cached balance matches the ledger.
+     */
+    BigDecimal reconciledBalanceAmount(WalletId walletId);
 }
