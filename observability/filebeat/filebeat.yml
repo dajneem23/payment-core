@@ -1,0 +1,37 @@
+# Filebeat: ship all Docker container logs to Elasticsearch.
+#
+# Autodiscover picks up every running container via the Docker API. Our services
+# log JSON to stdout, so we decode it into structured fields (log.level,
+# transferId, idempotencyKey, ...) that are queryable in Kibana.
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        - condition:
+            contains:
+              docker.container.image: ""   # match all containers
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+
+processors:
+  - add_docker_metadata: ~
+  # App logs are JSON on stdout; lift their fields to the top level.
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+      add_error_key: true
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "vietpay-logs-%{+yyyy.MM.dd}"
+
+setup.template.name: "vietpay-logs"
+setup.template.pattern: "vietpay-logs-*"
+setup.ilm.enabled: false
+
+logging.level: warning

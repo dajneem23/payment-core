@@ -1,0 +1,21 @@
+# Traefik static configuration — the north-south edge router.
+# Dynamic routing is discovered from Docker labels on each service (see
+# docker-compose.yml), so adding a service needs no change here.
+
+entryPoints:
+  web:
+    address: ":80"
+
+api:
+  dashboard: true
+  insecure: true          # dashboard on :8080 — dev convenience only
+
+providers:
+  docker:
+    exposedByDefault: false   # a service is only routed if it opts in via labels
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}

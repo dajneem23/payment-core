@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Structured JSON logging to stdout. Filebeat ships these lines to Elasticsearch
+  and the JSON is decoded into queryable fields. MDC values set on the transfer
+  path (transferId, idempotencyKey, sourceWalletId) are included automatically,
+  so a single transfer can be traced end-to-end in Kibana.
+-->
+<configuration>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+            <customFields>{"service":"wallet-service"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Human-readable console for local runs outside Docker. -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%X{idempotencyKey:-}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="docker">
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!docker">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>
