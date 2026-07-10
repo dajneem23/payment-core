@@ -129,16 +129,14 @@ services:
   #     - traefik.http.services.fraud.loadbalancer.server.port=3001
   #   restart: unless-stopped
 
-  # fx-service:
-  #   build: ./services/fx-service
-  #   environment:
-  #     PORT: "3002"
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.fx.rule=PathPrefix(`/fx`)
-  #     - traefik.http.routers.fx.entrypoints=web
-  #     - traefik.http.services.fx.loadbalancer.server.port=3002
-  #   restart: unless-stopped
+  fx-service:
+    build: ./fx-service
+    env_file:
+      - ./infra/docker/fx-service.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
 
   notification-service:
     build: ./notification-service

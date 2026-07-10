@@ -14,7 +14,7 @@ scrape_configs:
       - targets: ["wallet-service:8080"]
 
   # NestJS satellites expose prom-client metrics at /metrics.
-  # Each service imports the shared telemetry module (prom-client + OTel).
+  # Each service imports the shared telemetry module (prom-client + 
   - job_name: nestjs-services
     metrics_path: /metrics
     static_configs:
@@ -22,7 +22,7 @@ scrape_configs:
           - "notification-service:3003"
           - "user-service:3004"
           # - "fraud-service:3001"
-          # - "fx-service:3002"
+          - "fx-service:3002"
           # - "payment-gateway:3000"
           # - "visa-service:3010"
           # - "mastercard-service:3011"

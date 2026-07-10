@@ -7,6 +7,4 @@ ALTER TABLE wallets        ALTER COLUMN currency      TYPE VARCHAR(3);
 ALTER TABLE transfers      ALTER COLUMN currency      TYPE VARCHAR(3);
 ALTER TABLE transfers      ALTER COLUMN dest_currency TYPE VARCHAR(3);
 ALTER TABLE ledger_entries ALTER COLUMN currency      TYPE VARCHAR(3);
-ALTER TABLE fx_rates       ALTER COLUMN base          TYPE VARCHAR(3);
-ALTER TABLE fx_rates       ALTER COLUMN quote         TYPE VARCHAR(3);
 ALTER TABLE payments       ALTER COLUMN currency      TYPE VARCHAR(3);

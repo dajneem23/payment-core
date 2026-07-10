@@ -16,6 +16,12 @@ http:
       entryPoints: [web]
       service: notifications
 
+    # FX rates — public read-only market data (bid/ask vs VND).
+    fx:
+      rule: "PathPrefix(`/fx`)"
+      entryPoints: [web]
+      service: fx
+
     # Wallet API — protected: validate JWT via ForwardAuth, strip spoofed header.
     wallet:
       rule: "PathPrefix(`/api/v1`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/actuator`)"
@@ -32,6 +38,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://notification-service:3003"
+    fx:
+      loadBalancer:
+        servers:
+          - url: "http://fx-service:3002"
     wallet:
       loadBalancer:
         servers:

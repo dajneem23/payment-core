@@ -62,23 +62,4 @@ CREATE TABLE ledger_entries (
 );
 
 CREATE INDEX idx_ledger_wallet   ON ledger_entries(wallet_id, created_at);
-CREATE INDEX idx_ledger_transfer ON ledger_entries(transfer_id);
-
--- ---------------------------------------------------------------------------
--- fx_rates — seeded reference rates (fx-service is authoritative at runtime;
--- this seed keeps same-DB reconciliation and tests deterministic).
--- ---------------------------------------------------------------------------
-CREATE TABLE fx_rates (
-    base   CHAR(3)        NOT NULL,
-    quote  CHAR(3)        NOT NULL,
-    rate   NUMERIC(19, 8) NOT NULL CHECK (rate > 0),
-    PRIMARY KEY (base, quote)
-);
-
-INSERT INTO fx_rates (base, quote, rate) VALUES
-    ('USD', 'EUR', 0.92000000),
-    ('EUR', 'USD', 1.08695652),
-    ('USD', 'VND', 25400.00000000),
-    ('VND', 'USD', 0.00003937),
-    ('USD', 'GBP', 0.79000000),
-    ('GBP', 'USD', 1.26582278);
+CREATE INDEX idx_ledger_transfer ON ledger_entries (transfer_id);
