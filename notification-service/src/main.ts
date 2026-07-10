@@ -39,6 +39,9 @@ async function bootstrap() {
         }),
     );
 
+    // Trust the Traefik proxy so rate-limit + client-IP detection work correctly.
+    app.set('trust proxy', 1);
+
     app.use(helmet());
     app.use(
         rateLimit({
