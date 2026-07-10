@@ -20,5 +20,7 @@ WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=proddeps /build/node_modules ./node_modules
 COPY --from=builder /build/dist ./dist
+# /app must be writable by the non-root user (winston creates ./logs at runtime).
+RUN chown app:app /app
 USER app
 CMD ["node", "dist/main.js"]
