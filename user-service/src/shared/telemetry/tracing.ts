@@ -1,6 +1,13 @@
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
+import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
+import { KafkaJsInstrumentation } from '@opentelemetry/instrumentation-kafkajs';
+import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
+import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
+import { RuntimeNodeInstrumentation } from '@opentelemetry/instrumentation-runtime-node';
+import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -27,15 +34,21 @@ const spanProcessor = new BatchSpanProcessor(
 );
 
 // ── SDK ──────────────────────────────────────────────────────────────────
+// Explicit instrumentations for this service's stack: HTTP -> Express -> NestJS
+// -> pg (TypeORM) / ioredis (jti blacklist) / kafkajs (user.* events).
+// runtime-node adds event-loop/GC/heap metrics; undici traces global fetch.
 const sdk = new NodeSDK({
     resource,
     spanProcessors: [spanProcessor],
     instrumentations: [
-        getNodeAutoInstrumentations({
-            '@opentelemetry/instrumentation-fs': { enabled: false },
-            '@opentelemetry/instrumentation-net': { enabled: false },
-            '@opentelemetry/instrumentation-dns': { enabled: false },
-        }),
+        new HttpInstrumentation(),
+        new ExpressInstrumentation(),
+        new NestInstrumentation(),
+        new PgInstrumentation(),
+        new IORedisInstrumentation(),
+        new KafkaJsInstrumentation(),
+        new UndiciInstrumentation(),
+        new RuntimeNodeInstrumentation(),
     ],
 });
 

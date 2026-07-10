@@ -1,6 +1,10 @@
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { KafkaJsInstrumentation } from '@opentelemetry/instrumentation-kafkajs';
+import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
+import { RuntimeNodeInstrumentation } from '@opentelemetry/instrumentation-runtime-node';
+import { UndiciInstrumentation } from '@opentelemetry/instrumentation-undici';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -30,18 +34,19 @@ const spanProcessor = new BatchSpanProcessor(
 );
 
 // ── SDK ──────────────────────────────────────────────────────────────────
+// Explicit instrumentations for this service's stack: HTTP -> Express -> NestJS,
+// and kafkajs (consumes transfer/user events). runtime-node adds event-loop/GC/
+// heap metrics; undici traces global fetch (outbound email/webhook calls).
 const sdk = new NodeSDK({
     resource,
     spanProcessors: [spanProcessor],
     instrumentations: [
-        getNodeAutoInstrumentations({
-            // Disable fs/dns/net for lower noise; enable what you need.
-            '@opentelemetry/instrumentation-fs': { enabled: false },
-            '@opentelemetry/instrumentation-net': { enabled: false },
-            '@opentelemetry/instrumentation-dns': { enabled: false },
-        }),
-        // KafkaJS — traces produce→consume across the broker.
+        new HttpInstrumentation(),
+        new ExpressInstrumentation(),
+        new NestInstrumentation(),
         new KafkaJsInstrumentation(),
+        new UndiciInstrumentation(),
+        new RuntimeNodeInstrumentation(),
     ],
 });
 
