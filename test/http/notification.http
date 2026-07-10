@@ -1,0 +1,117 @@
+### VietPay — Notification flows (notification-service)
+### Public email endpoints are routed through Traefik at /notifications/*.
+### Health, metrics, and internal endpoints are direct on port 3003
+### (not exposed via Traefik).
+
+@baseUrl = http://localhost
+@directUrl = http://localhost:3003
+@email = dajneem234@yopmail.com
+
+### ── Health & metrics (direct) ─────────────────────────────────────────
+
+### Health check
+GET {{directUrl}}/healthcheck
+
+### Prometheus metrics
+GET {{directUrl}}/metrics
+
+### ── Generic email ────────────────────────────────────────────────────
+
+### Send a generic email
+POST {{baseUrl}}/notifications/email
+Content-Type: application/json
+
+{
+  "to": ["{{email}}"],
+  "subject": "Test from VietPay Notification Service",
+  "html": "<h1>Hello!</h1><p>This is a test email via Nodemailer.</p>",
+  "text": "Hello! This is a test email via Nodemailer."
+}
+
+### ── Welcome (new-user greeting) ───────────────────────────────────────
+
+### Send a welcome email
+POST {{baseUrl}}/notifications/welcome
+Content-Type: application/json
+
+{
+  "to": "{{email}}",
+  "customerName": "Alice"
+}
+
+### ── Payment confirmation ─────────────────────────────────────────────
+
+### Send a payment confirmation email
+POST {{baseUrl}}/notifications/payment
+Content-Type: application/json
+
+{
+  "to": "{{email}}",
+  "customerName": "Alice",
+  "transferId": "txn_01J3K4N5P6",
+  "amount": "150.00",
+  "currency": "USD",
+  "status": "completed",
+  "sourceWalletId": "wal_a1b2c3d4",
+  "targetWalletId": "wal_e5f6g7h8",
+  "timestamp": "2026-07-10T08:30:00Z"
+}
+
+### ── OTP ─────────────────────────────────────────────────────────────
+
+### Send an OTP email (login)
+POST {{baseUrl}}/notifications/otp
+Content-Type: application/json
+
+{
+  "to": "{{email}}",
+  "customerName": "Alice",
+  "otpCode": "482931",
+  "purpose": "login",
+  "expiresInMinutes": 5
+}
+
+### Send an OTP email (password reset)
+POST {{baseUrl}}/notifications/otp
+Content-Type: application/json
+
+{
+  "to": "{{email}}",
+  "customerName": "Alice",
+  "otpCode": "739105",
+  "purpose": "password reset",
+  "expiresInMinutes": 10
+}
+
+### ── Internal: Kafka control plane (direct to port 3003) ────────────────
+
+### List all broker topics
+GET {{directUrl}}/internal/kafka/topics
+
+### Get offsets + lag for user-events
+GET {{directUrl}}/internal/kafka/topics/user-events/offsets
+
+### Get offsets + lag for transfer-events
+GET {{directUrl}}/internal/kafka/topics/transfer-events/offsets
+
+### ── Replay: rewind to the beginning and reprocess all ────��───────────
+
+### Seek user-events partition 0 to earliest (full replay)
+POST {{directUrl}}/internal/kafka/seek
+Content-Type: application/json
+
+{
+  "entries": [
+    { "topic": "user-events", "partition": 0, "offset": "earliest" }
+  ]
+}
+
+### Seek to a specific offset (e.g. replay from offset 2 onward)
+POST {{directUrl}}/internal/kafka/seek
+Content-Type: application/json
+
+{
+  "entries": [
+    { "topic": "user-events", "partition": 0, "offset": "2" }
+  ]
+}

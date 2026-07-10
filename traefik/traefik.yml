@@ -14,6 +14,15 @@ api:
   dashboard: true
   insecure: true          # dashboard on :8080 — dev convenience only
 
+# Prometheus metrics — served on the internal `traefik` entrypoint (:8080),
+# i.e. GET :8080/metrics. Per-router/service/entrypoint labels let Grafana
+# break down request rate, latency, and status codes by route.
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    addRoutersLabels: true
+
 providers:
   file:
     directory: /etc/traefik/dynamic

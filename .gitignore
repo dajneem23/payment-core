@@ -15,11 +15,13 @@ yarn-error.log*
 # ---- env / secrets ----
 .env
 *.local
+infra/docker/*.env
+!infra/docker/*.env.example
 
 # ---- IDE ----
 .idea/
 *.iml
-.vscode/
+# .vscode/
 .settings/
 .project
 .classpath

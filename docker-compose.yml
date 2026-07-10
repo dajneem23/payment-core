@@ -75,16 +75,8 @@ services:
   # -------------------------------------------------- Java core (graded) -----
   wallet-service:
     build: ./wallet-service
-    environment:
-      DB_URL: jdbc:postgresql://postgres:5432/vietpay
-      DB_USER: vietpay
-      DB_PASSWORD: vietpay
-      REDIS_HOST: redis
-      KAFKA_BOOTSTRAP: kafka:9092
-      FRAUD_URL: http://fraud-service:3001
-      FX_URL: http://fx-service:3002
-      OUTBOX_ENABLED: "true"
-      SPRING_PROFILES_ACTIVE: docker
+    env_file:
+      - ./infra/docker/wallet-service.env
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -104,22 +96,8 @@ services:
   # ----------------------------------------------------- NestJS satellites ---
   user-service:
     build: ./user-service
-    environment:
-      NODE_ENV: production
-      HOST: 0.0.0.0
-      PORT: "3004"
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_USERNAME: postgres
-      DB_PASSWORD: password
-      DB_DATABASE: vietpay_users
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_DB: "1"
-      JWT_PRIVATE_KEY_PATH: /app/keys/jwt-private.pem
-      JWT_PUBLIC_KEY_PATH: /app/keys/jwt-public.pem
-      JWT_ACCESS_EXPIRES_IN: "900"
-      JWT_REFRESH_EXPIRES_IN: "604800"
+    env_file:
+      - ./infra/docker/user-service.env
     volumes:
       # Mount the EC keypair read-only rather than baking the private key into
       # the image. In production this would be a secret / mounted vault path.
@@ -127,6 +105,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     labels:
       - traefik.enable=true
       # Public auth endpoints (login/register/refresh) — NO forward-auth here.
@@ -161,15 +140,18 @@ services:
   #     - traefik.http.services.fx.loadbalancer.server.port=3002
   #   restart: unless-stopped
 
-  # notification-service:
-  #   build: ./services/notification-service
-  #   environment:
-  #     PORT: "3003"
-  #     KAFKA_BROKER: kafka:9092
-  #     TRANSFER_TOPIC: transfer-events
-  #   depends_on:
-  #     kafka: { condition: service_healthy }
-  #   restart: unless-stopped
+  notification-service:
+    build: ./notification-service
+    env_file:
+      - ./infra/docker/notification-service.env
+    depends_on:
+      kafka: { condition: service_healthy }
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.notifications.rule=PathPrefix(`/notifications`)
+      - traefik.http.routers.notifications.entrypoints=web
+      - traefik.http.services.notifications.loadbalancer.server.port=3003
+    restart: unless-stopped
 
   # payment-gateway:
   #   build: ./services/payment-gateway

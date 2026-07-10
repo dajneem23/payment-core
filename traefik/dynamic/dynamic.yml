@@ -10,6 +10,12 @@ http:
       entryPoints: [web]
       service: auth
 
+    # Notification API — public; used by other services to trigger emails.
+    notifications:
+      rule: "PathPrefix(`/notifications`)"
+      entryPoints: [web]
+      service: notifications
+
     # Wallet API — protected: validate JWT via ForwardAuth, strip spoofed header.
     wallet:
       rule: "PathPrefix(`/api/v1`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/actuator`)"
@@ -22,6 +28,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://user-service:3004"
+    notifications:
+      loadBalancer:
+        servers:
+          - url: "http://notification-service:3003"
     wallet:
       loadBalancer:
         servers:

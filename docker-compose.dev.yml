@@ -45,6 +45,12 @@ services:
   #   ports:
   #     - "3002:3002"
 
+  notification-service:
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3003:3003"
+
   # payment-gateway:
   #   ports:
   #     - "3000:3000"

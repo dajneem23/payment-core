@@ -26,25 +26,42 @@ interface UserEvent {
     timestamp: string;
 }
 
+export interface TopicOffsets {
+    topic: string;
+    partitions: {
+        partition: number;
+        low: string;      // earliest offset
+        high: string;     // latest offset
+        committed: string; // consumer-group committed (or '-1' if none)
+        lag: number;
+    }[];
+}
+
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(KafkaConsumerService.name);
     private kafka: Kafka;
     private consumer: Consumer;
+    private groupId: string;
+    private subscribedTopics: string[] = [];
 
     constructor(
         private readonly configService: ConfigService,
         private readonly notificationService: NotificationService,
     ) {
         const kafkaCfg = configService.kafkaConfig;
+        this.groupId = kafkaCfg.groupId;
         this.kafka = new Kafka({
             clientId: kafkaCfg.clientId,
             brokers: [kafkaCfg.broker],
         });
         this.consumer = this.kafka.consumer({
-            groupId: kafkaCfg.groupId,
+            groupId: this.groupId,
+            allowAutoTopicCreation: true,
         });
     }
+
+    // ── Lifecycle ───────────────────────────────────────────────────────
 
     async onModuleInit() {
         const kafkaCfg = this.configService.kafkaConfig;
@@ -57,12 +74,14 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
                 topic: kafkaCfg.transferTopic,
                 fromBeginning: false,
             });
+            this.subscribedTopics.push(kafkaCfg.transferTopic);
             this.logger.log(`Subscribed: ${kafkaCfg.transferTopic}`);
 
             await this.consumer.subscribe({
                 topic: kafkaCfg.userTopic,
                 fromBeginning: false,
             });
+            this.subscribedTopics.push(kafkaCfg.userTopic);
             this.logger.log(`Subscribed: ${kafkaCfg.userTopic}`);
 
             await this.consumer.run({
@@ -79,9 +98,6 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
                             await this.handleUserEvent(JSON.parse(value));
                         }
 
-                        // ── Commit AFTER successful processing ─────────
-                        // Only commit if business logic didn't throw.
-                        // commitSync blocks until the broker confirms.
                         await this.consumer.commitOffsets([
                             {
                                 topic,
@@ -94,8 +110,6 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
                             `Failed to handle ${topic} message (offset=${message.offset}): ${err.message}`,
                             err.stack,
                         );
-                        // DO NOT commit — the message will be redelivered
-                        // on the next poll. Ensure handlers are idempotent.
                     }
                 },
             });
@@ -107,13 +121,21 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    // ── Handlers ──────────────────────────────────────────────────────────
+    async onModuleDestroy() {
+        try {
+            await this.consumer.disconnect();
+            this.logger.log('Kafka consumer disconnected');
+        } catch (err: any) {
+            this.logger.error(`Kafka disconnect error: ${err.message}`);
+        }
+    }
+
+    // ── Handlers ────────────────────────────────────────────────────────
 
     private async handleTransfer(event: TransferEvent) {
         this.logger.log(
             `Transfer event: ${event.transferId} — ${event.amount} ${event.currency} — status=${event.status}`,
         );
-        // TODO: enrich with user email from user-service, then send confirmation
     }
 
     private async handleUserEvent(event: UserEvent) {
@@ -140,14 +162,104 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────
+    // ── Admin / control-plane ───────────────────────────────────────────
 
-    async onModuleDestroy() {
+    /** List all topics on the broker. */
+    async listTopics(): Promise<string[]> {
+        const admin = this.kafka.admin();
+        await admin.connect();
         try {
-            await this.consumer.disconnect();
-            this.logger.log('Kafka consumer disconnected');
-        } catch (err: any) {
-            this.logger.error(`Kafka disconnect error: ${err.message}`);
+            const topics = await admin.listTopics();
+            // Filter internal topics
+            return topics.filter((t) => !t.startsWith('__'));
+        } finally {
+            await admin.disconnect();
         }
+    }
+
+    /** Get per-partition watermark + consumer-group offset for a topic. */
+    async getTopicOffsets(topic: string): Promise<TopicOffsets> {
+        const admin = this.kafka.admin();
+        await admin.connect();
+        try {
+            // Earliest + latest offsets for the topic
+            const topicOffsets = await admin.fetchTopicOffsets(topic);
+
+            // Consumer-group committed offsets
+            const groupOffsets = await admin.fetchOffsets({
+                groupId: this.groupId,
+                topics: [topic],
+            });
+
+            const partitions = topicOffsets.map((to) => {
+                const groupResult = groupOffsets.find(
+                    (go) => go.topic === topic,
+                );
+                const committedPartition = groupResult?.partitions.find(
+                    (p) => p.partition === to.partition,
+                );
+                const committedOffset = committedPartition?.offset ?? '-1';
+                const high = Number(to.high);
+                const low = Number(to.low);
+                const committedNum = committedOffset !== '-1' ? Number(committedOffset) : -1;
+                const lag =
+                    committedNum >= 0 ? Math.max(0, high - committedNum) : high - low;
+
+                return {
+                    partition: to.partition,
+                    low: to.low,
+                    high: to.high,
+                    committed: committedOffset,
+                    lag,
+                };
+            });
+
+            return { topic, partitions };
+        } finally {
+            await admin.disconnect();
+        }
+    }
+
+    /**
+     * Rewind the consumer group to a specific offset for one or more
+     * partitions. The consumer is paused, seeked, and resumed.
+     *
+     * @param offsets  [{ topic, partition, offset }] — use `'earliest'` to
+     *                 replay from the beginning, or a numeric string.
+     */
+    async seek(
+        offsets: { topic: string; partition: number; offset: string }[],
+    ) {
+        const assignedTopics = new Set(this.subscribedTopics);
+        for (const o of offsets) {
+            if (!assignedTopics.has(o.topic)) {
+                throw new Error(
+                    `Topic "${o.topic}" is not subscribed by this consumer`,
+                );
+            }
+        }
+
+        this.consumer.pause(offsets.map((o) => ({ topic: o.topic, partitions: [o.partition] })));
+
+        for (const o of offsets) {
+            const targetOffset =
+                o.offset === 'earliest' ? '0' : o.offset;
+
+            this.consumer.seek({
+                topic: o.topic,
+                partition: o.partition,
+                offset: targetOffset,
+            });
+
+            this.logger.warn(
+                `Seek ${o.topic}[${o.partition}] → offset ${targetOffset}`,
+            );
+        }
+
+        // Resume after a short delay so in-flight pauses settle
+        await new Promise((r) => setTimeout(r, 500));
+        this.consumer.resume(offsets.map((o) => ({ topic: o.topic, partitions: [o.partition] })));
+
+        return { seeked: offsets };
     }
 }
