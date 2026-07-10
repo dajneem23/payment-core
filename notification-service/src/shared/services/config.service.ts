@@ -61,6 +61,8 @@ export class ConfigService {
             groupId: this.get('KAFKA_GROUP_ID') || 'notification-service',
             transferTopic:
                 this.get('KAFKA_TRANSFER_TOPIC') || 'transfer-events',
+            userTopic:
+                this.get('KAFKA_USER_TOPIC') || 'user-events',
         };
     }
 
