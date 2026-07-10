@@ -2,6 +2,11 @@ global:
   scrape_interval: 10s
 
 scrape_configs:
+  # Traefik edge metrics (request rate, latency, status by router/service).
+  - job_name: traefik
+    static_configs:
+      - targets: ["traefik:8080"]
+
   # Spring Boot Actuator exposes Prometheus metrics at /actuator/prometheus.
   - job_name: wallet-service
     metrics_path: /actuator/prometheus
@@ -9,13 +14,15 @@ scrape_configs:
       - targets: ["wallet-service:8080"]
 
   # NestJS satellites expose prom-client metrics at /metrics.
+  # Each service imports the shared telemetry module (prom-client + OTel).
   - job_name: nestjs-services
     metrics_path: /metrics
     static_configs:
       - targets:
-          - "fraud-service:3001"
-          - "fx-service:3002"
           - "notification-service:3003"
-          - "payment-gateway:3000"
-          - "visa-service:3010"
-          - "mastercard-service:3011"
+          - "user-service:3004"
+          # - "fraud-service:3001"
+          # - "fx-service:3002"
+          # - "payment-gateway:3000"
+          # - "visa-service:3010"
+          # - "mastercard-service:3011"

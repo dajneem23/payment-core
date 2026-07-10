@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ConfigService } from './shared/services/config.service';
 import { SharedModule } from './shared.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MetricsModule } from './shared/telemetry/metrics.module';
 import { RedisModule } from './shared/redis/redis.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { RedisModule } from './shared/redis/redis.module';
         RedisModule,
         UsersModule,
         AuthModule,
+        MetricsModule,
         TerminusModule,
         TypeOrmModule.forRootAsync({
             imports: [SharedModule],

@@ -1,7 +1,5 @@
 'use strict';
 
-import * as _ from 'lodash';
-
 import { AbstractEntity } from './common/abstract.entity';
 import { AbstractDto } from './common/dto/abstract.dto';
 
@@ -12,8 +10,5 @@ declare global {
 }
 
 Array.prototype.toDtos = function <B extends AbstractDto>(): B[] {
-    return _(this)
-        .map((item) => item.toDto())
-        .compact()
-        .value() as B[];
+    return this.map((item) => item.toDto()).filter(Boolean) as B[];
 };

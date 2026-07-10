@@ -1,3 +1,6 @@
+// ── OpenTelemetry MUST be imported first — before any other module ──────
+import './shared/telemetry/tracing';
+
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import {
