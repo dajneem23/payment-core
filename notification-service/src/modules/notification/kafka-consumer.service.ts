@@ -53,7 +53,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         this.groupId = kafkaCfg.groupId;
         this.kafka = new Kafka({
             clientId: kafkaCfg.clientId,
-            brokers: [kafkaCfg.broker],
+            brokers: [ kafkaCfg.broker ],
         });
         this.consumer = this.kafka.consumer({
             groupId: this.groupId,
@@ -65,24 +65,49 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit() {
         const kafkaCfg = this.configService.kafkaConfig;
-
+        const maxRetries = 10;
         try {
-            await this.consumer.connect();
-            this.logger.log(`Kafka consumer connected: ${kafkaCfg.broker}`);
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    await this.consumer.connect();
+                    this.logger.log(`Kafka consumer connected: ${kafkaCfg.broker}`);
 
-            await this.consumer.subscribe({
-                topic: kafkaCfg.transferTopic,
-                fromBeginning: false,
-            });
-            this.subscribedTopics.push(kafkaCfg.transferTopic);
-            this.logger.log(`Subscribed: ${kafkaCfg.transferTopic}`);
+                    await this.consumer.subscribe({
+                        topic: kafkaCfg.transferTopic,
+                        fromBeginning: false,
+                    });
+                    this.subscribedTopics.push(kafkaCfg.transferTopic);
+                    this.logger.log(`Subscribed: ${kafkaCfg.transferTopic}`);
 
-            await this.consumer.subscribe({
-                topic: kafkaCfg.userTopic,
-                fromBeginning: false,
-            });
-            this.subscribedTopics.push(kafkaCfg.userTopic);
-            this.logger.log(`Subscribed: ${kafkaCfg.userTopic}`);
+                    await this.consumer.subscribe({
+                        topic: kafkaCfg.userTopic,
+                        fromBeginning: false,
+                    });
+                    this.subscribedTopics.push(kafkaCfg.userTopic);
+                    this.logger.log(`Subscribed: ${kafkaCfg.userTopic}`);
+
+                    break; // success — exit retry loop
+                } catch (err: any) {
+                    this.logger.error(
+                        `Kafka consumer init attempt ${attempt + 1}/${maxRetries} failed: ${err.message}`,
+                    );
+                    try {
+                        await this.consumer.disconnect();
+                    } catch {
+                        // connection may never have been established; ignore.
+                    }
+                    if (attempt === maxRetries - 1) {
+                        this.logger.error(
+                            'Kafka consumer init exhausted retries — consumer disabled',
+                        );
+                        return;
+                    }
+                    // Exponential backoff:
+                    const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+            }
+
 
             await this.consumer.run({
                 autoCommit: false,
@@ -118,6 +143,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
                 `Kafka consumer init failed: ${err.message}`,
                 err.stack,
             );
+            //we probaly should kill the process here, because if we can't connect to kafka, we can't do anything useful. But for now, just log the error and continue.
         }
     }
 
@@ -142,8 +168,8 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         switch (event.type) {
             case 'user.created': {
                 const displayName =
-                    [event.firstName, event.lastName].filter(Boolean).join(' ') ||
-                    event.email.split('@')[0];
+                    [ event.firstName, event.lastName ].filter(Boolean).join(' ') ||
+                    event.email.split('@')[ 0 ];
 
                 this.logger.log(
                     `user.created: ${event.userId} (${event.email}) → sending welcome email`,
@@ -188,7 +214,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
             // Consumer-group committed offsets
             const groupOffsets = await admin.fetchOffsets({
                 groupId: this.groupId,
-                topics: [topic],
+                topics: [ topic ],
             });
 
             const partitions = topicOffsets.map((to) => {
@@ -239,7 +265,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
             }
         }
 
-        this.consumer.pause(offsets.map((o) => ({ topic: o.topic, partitions: [o.partition] })));
+        this.consumer.pause(offsets.map((o) => ({ topic: o.topic, partitions: [ o.partition ] })));
 
         for (const o of offsets) {
             const targetOffset =
@@ -258,7 +284,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
         // Resume after a short delay so in-flight pauses settle
         await new Promise((r) => setTimeout(r, 500));
-        this.consumer.resume(offsets.map((o) => ({ topic: o.topic, partitions: [o.partition] })));
+        this.consumer.resume(offsets.map((o) => ({ topic: o.topic, partitions: [ o.partition ] })));
 
         return { seeked: offsets };
     }
