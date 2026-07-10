@@ -7,6 +7,7 @@ import com.vietpay.wallet.domain.fraud.FraudPolicy;
 import com.vietpay.wallet.domain.ledger.Ledger;
 import com.vietpay.wallet.domain.shared.IdempotencyKey;
 import com.vietpay.wallet.domain.shared.Money;
+import com.vietpay.wallet.domain.shared.EventOutbox;
 import com.vietpay.wallet.domain.transfer.Transfer;
 import com.vietpay.wallet.domain.transfer.Transfers;
 import com.vietpay.wallet.domain.exception.FraudRejectedException;
@@ -40,8 +41,8 @@ import java.util.stream.Collectors;
  * <p>Inside the transaction: lock both wallets ({@code SELECT ... FOR UPDATE},
  * ordered by id in the adapter → deadlock-safe) → debit/credit (the aggregate
  * enforces no-overdraw, the DB CHECK is the backstop) → record the transfer
- * (UNIQUE idempotency key) → append the balanced ledger entries. All commit
- * together or not at all.
+ * (UNIQUE idempotency key) → append the balanced ledger entries → write the
+ * outbox event. All commit together or not at all.
  */
 @Service
 public class TransferService {
@@ -51,16 +52,18 @@ public class TransferService {
     private final Wallets wallets;
     private final Transfers transfers;
     private final Ledger ledger;
+    private final EventOutbox outbox;
     private final FraudPolicy fraudPolicy;
     private final WalletService walletService;
     private final TransactionTemplate tx;
 
     public TransferService(Wallets wallets, Transfers transfers, Ledger ledger,
-                           FraudPolicy fraudPolicy,
+                           EventOutbox outbox, FraudPolicy fraudPolicy,
                            WalletService walletService, PlatformTransactionManager txManager) {
         this.wallets = wallets;
         this.transfers = transfers;
         this.ledger = ledger;
+        this.outbox = outbox;
         this.fraudPolicy = fraudPolicy;
         this.walletService = walletService;
         this.tx = new TransactionTemplate(txManager);
@@ -142,6 +145,7 @@ public class TransferService {
         Transfer transfer = Transfer.complete(key, source.id(), dest.id(), amount);
         transfers.save(transfer);                          // UNIQUE key -> idempotency guard
         ledger.append(transfer.toLedgerEntries());         // balanced debit + credit
+        outbox.append("Transfer", transfer.id().value(), transfer.pullDomainEvents());
         return TransferResult.from(transfer);
     }
 
