@@ -139,6 +139,19 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <!-- Pin the Docker client API version for the forked test JVM.
+                         Testcontainers' docker-java defaults to 1.32, but modern
+                         daemons (Docker Engine 25+/OrbStack) enforce a minimum of
+                         1.40. docker-java reads the `api.version` system property;
+                         1.44 is accepted by any recent daemon, so this is portable. -->
+                    <systemPropertyVariables>
+                        <api.version>1.44</api.version>
+                    </systemPropertyVariables>
+                    <environmentVariables>
+                        <DOCKER_API_VERSION>1.44</DOCKER_API_VERSION>
+                    </environmentVariables>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

@@ -12,7 +12,7 @@ CREATE TABLE wallets (
     currency    CHAR(3)        NOT NULL,
     -- balance is the cached, locked figure. The CHECK is the last-line DB
     -- guarantee against overdraw, independent of any application logic.
-    balance     NUMERIC(19, 4) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    balance     NUMERIC(19, 4) NOT NULL DEFAULT 0,
     -- SYSTEM accounts (e.g. card_clearing) may legitimately go negative as the
     -- external-money counter-account, so they are exempt from the >= 0 rule.
     kind        VARCHAR(16)    NOT NULL DEFAULT 'USER',   -- USER | SYSTEM

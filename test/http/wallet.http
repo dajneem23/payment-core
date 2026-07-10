@@ -46,7 +46,7 @@ Content-Type: application/json
 ### Deposit $100 into the wallet (ADMIN-only; safe to retry via Idempotency-Key) -> 201
 POST {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}/deposits
 Authorization: Bearer {{adminLogin.response.body.accessToken}}
-Idempotency-Key: dep-11111111-1111-1111-1111-111111111111
+Idempotency-Key: dep-21111111-1111-1111-1111-111111111111
 Content-Type: application/json
 
 {
@@ -109,7 +109,7 @@ GET {{baseUrl}}/api/v1/wallets/00000000-0000-0000-0000-000000000009
 
 
 ### get reconciliation for a wallet -> 200
-GET {{baseUrl}}/api/v1/wallets/5f5026b3-36df-4dad-9d79-1b6e0038ba22/reconciliation
+GET {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}/reconciliation
 Authorization: Bearer {{login.response.body.accessToken}}
 
 
