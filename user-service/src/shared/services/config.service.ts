@@ -113,6 +113,14 @@ export class ConfigService {
         };
     }
 
+    get kafkaConfig() {
+        return {
+            broker: this.get('KAFKA_BROKER') || 'localhost:9092',
+            clientId: this.get('KAFKA_CLIENT_ID') || 'user-service',
+            userTopic: this.get('KAFKA_USER_TOPIC') || 'user-events',
+        };
+    }
+
     get eventStoreConfig() {
         return {
             protocol: this.get('EVENT_STORE_PROTOCOL') || 'http',

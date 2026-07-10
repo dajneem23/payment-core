@@ -8,6 +8,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
 import { ConfigService } from '../../shared/services/config.service';
+import { KafkaProducerService } from '../../shared/services/kafka-producer.service';
 import { UsersService } from '../users/services/users.service';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenBlacklistService } from './token-blacklist.service';
@@ -43,6 +44,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly blacklist: TokenBlacklistService,
+        private readonly kafkaProducer: KafkaProducerService,
         configService: ConfigService,
     ) {
         this.accessExpiresIn = configService.jwtConfig.accessExpiresIn;
@@ -60,6 +62,18 @@ export class AuthService {
         }
         const passwordHash = await bcrypt.hash(params.password, BCRYPT_ROUNDS);
         const user = await this.usersService.create({ ...params, passwordHash });
+
+        // Fire-and-forget: publish user.created for downstream services
+        // (notification-service sends the welcome email).
+        this.kafkaProducer.publish('user-events', user.id, {
+            type: 'user.created' as const,
+            userId: user.id,
+            email: user.email,
+            firstName: params.firstName,
+            lastName: params.lastName,
+            timestamp: new Date().toISOString(),
+        });
+
         return this.issuePair(user.id, user.email);
     }
 
