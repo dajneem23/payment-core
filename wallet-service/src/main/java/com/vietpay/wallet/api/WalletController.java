@@ -1,6 +1,7 @@
 package com.vietpay.wallet.api;
 
 import com.vietpay.wallet.api.dto.CreateWalletRequest;
+import com.vietpay.wallet.api.dto.TransactionResponse;
 import com.vietpay.wallet.api.dto.WalletResponse;
 import com.vietpay.wallet.application.wallet.WalletService;
 import jakarta.validation.Valid;
@@ -11,12 +12,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
-/** Wallet accounts: open a wallet and query its balance. */
+/** Wallet accounts: open a wallet, query balance, history, and reconciliation. */
 @RestController
 @RequestMapping("/api/v1/wallets")
 public class WalletController {
@@ -37,5 +40,23 @@ public class WalletController {
     @ResponseStatus(HttpStatus.OK)
     public WalletResponse get(@PathVariable UUID id) {
         return WalletResponse.from(walletService.get(id));
+    }
+
+    @GetMapping("/{id}/transactions")
+    @ResponseStatus(HttpStatus.OK)
+    public List<TransactionResponse> transactions(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int offset) {
+        return walletService.transactions(id, limit, offset).stream()
+            .map(TransactionResponse::from)
+            .toList();
+    }
+
+    /** Prove the cached balance equals the ledger's sum (the ledger is truth). */
+    @GetMapping("/{id}/reconciliation")
+    @ResponseStatus(HttpStatus.OK)
+    public WalletService.Reconciliation reconcile(@PathVariable UUID id) {
+        return walletService.reconcile(id);
     }
 }
