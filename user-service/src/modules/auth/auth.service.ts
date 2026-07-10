@@ -74,7 +74,7 @@ export class AuthService {
             timestamp: new Date().toISOString(),
         });
 
-        return this.issuePair(user.id, user.email);
+        return this.issuePair(user.id, user.email, user.role);
     }
 
     async login(email: string, password: string): Promise<TokenPair> {
@@ -82,7 +82,7 @@ export class AuthService {
         if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
             throw new UnauthorizedException('invalid credentials');
         }
-        return this.issuePair(user.id, user.email);
+        return this.issuePair(user.id, user.email, user.role);
     }
 
     async refresh(refreshToken: string): Promise<TokenPair> {
@@ -103,7 +103,7 @@ export class AuthService {
             await this.usersService.clearRefreshToken(user.id);
             throw new UnauthorizedException('refresh token already used');
         }
-        return this.issuePair(user.id, user.email);
+        return this.issuePair(user.id, user.email, user.role);
     }
 
     /** Logout: revoke the refresh token (DB) and blacklist the access token's
@@ -142,9 +142,9 @@ export class AuthService {
         }
     }
 
-    private async issuePair(userId: string, email: string): Promise<TokenPair> {
-        const accessToken = this.sign(userId, email, 'access', this.accessExpiresIn);
-        const refreshToken = this.sign(userId, email, 'refresh', this.refreshExpiresIn);
+    private async issuePair(userId: string, email: string, role: string): Promise<TokenPair> {
+        const accessToken = this.sign(userId, email, role, 'access', this.accessExpiresIn);
+        const refreshToken = this.sign(userId, email, role, 'refresh', this.refreshExpiresIn);
         await this.usersService.setRefreshToken(userId, this.hashToken(refreshToken));
         return {
             accessToken,
@@ -157,11 +157,12 @@ export class AuthService {
     private sign(
         userId: string,
         email: string,
+        role: string,
         type: 'access' | 'refresh',
         expiresIn: number,
     ): string {
         return this.jwtService.sign(
-            { sub: userId, email, type },
+            { sub: userId, email, role, type },
             { expiresIn, jwtid: crypto.randomUUID() },
         );
     }

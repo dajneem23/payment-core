@@ -10,6 +10,7 @@
 export interface JwtPayload {
     sub: string;
     email: string;
+    role: string; // 'USER' | 'ADMIN' — surfaced downstream as X-User-Role
     type: 'access' | 'refresh';
     jti?: string; // set by signer via jwtid
     iat?: number; // set by signer

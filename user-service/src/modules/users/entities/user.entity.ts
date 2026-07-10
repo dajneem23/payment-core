@@ -12,6 +12,12 @@ export class User extends AbstractEntity {
     @Column({ name: 'password_hash' })
     passwordHash!: string;
 
+    // Authorization role. Regular users are USER; ADMIN 
+    // Carried in the JWT and surfaced to downstream
+    // services via the X-User-Role header (Traefik ForwardAuth).
+    @Column({ default: 'USER' })
+    role!: string;
+
     @Column({ nullable: true })
     firstName?: string;
 
@@ -21,7 +27,7 @@ export class User extends AbstractEntity {
     @Column({ nullable: true })
     isSSO?: boolean;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, default: true })
     isActive?: boolean;
 
 

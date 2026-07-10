@@ -31,6 +31,7 @@ public class GlobalExceptionHandler {
         ErrorCode.CURRENCY_UNSUPPORTED, HttpStatus.UNPROCESSABLE_ENTITY,
         ErrorCode.FRAUD_REJECTED, HttpStatus.UNPROCESSABLE_ENTITY,
         ErrorCode.IDEMPOTENCY_CONFLICT, HttpStatus.CONFLICT,
+        ErrorCode.FORBIDDEN, HttpStatus.FORBIDDEN,
         ErrorCode.INTERNAL_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
 
     @ExceptionHandler(DomainException.class)

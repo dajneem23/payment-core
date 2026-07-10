@@ -94,7 +94,7 @@ GET {{directUrl}}/internal/kafka/topics/user-events/offsets
 ### Get offsets + lag for transfer-events
 GET {{directUrl}}/internal/kafka/topics/transfer-events/offsets
 
-### ── Replay: rewind to the beginning and reprocess all ────��───────────
+### ── Replay: rewind to the beginning and reprocess all ───────────────
 
 ### Seek user-events partition 0 to earliest (full replay)
 POST {{directUrl}}/internal/kafka/seek

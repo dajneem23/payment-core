@@ -1,13 +1,13 @@
-import { Controller, Post, Body, Get, UseGuards, Res, Headers } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Res, Req, Headers } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { UserId } from './user-id.decorator';
 import { RefreshDto } from './dtos/refresh.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -47,20 +47,20 @@ export class AuthController {
     }
 
     /**
-     * Called by Traefik ForwardAuth on every API request. Returns 200 +
-     * X-User-Id if the token is valid, 401 otherwise. The guard extracts the
-     * Bearer token from the Authorization header; the service validates it.
+     * Called by Traefik ForwardAuth on every protected request. Returns 200 with
+     * X-User-Id + X-User-Role if the token is valid, 401 otherwise. The guard
+     * validates the token and puts the payload on the request.
      *
-     * Traefik is configured to pass `authResponseHeaders: X-User-Id` so the
-     * upstream services receive that header, and to strip any client-supplied
-     * X-User-Id to prevent impersonation.
+     * Traefik copies these headers onto the upstream request
+     * (authResponseHeaders) and strips any client-supplied copies to prevent
+     * impersonation, so downstream services can trust them.
      */
     @Get('verify')
     @UseGuards(JwtAuthGuard)
-    async verify(@UserId() userId: string, @Res({ passthrough: true }) res: Response) {
-        // Traefik ForwardAuth copies this response header onto the upstream
-        // request (authResponseHeaders: X-User-Id). Downstream services trust it.
-        res.setHeader('X-User-Id', userId);
-        return { sub: userId };
+    async verify(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+        const user = (req as any).user as JwtPayload;
+        res.setHeader('X-User-Id', user.sub);
+        res.setHeader('X-User-Role', user.role);
+        return { sub: user.sub, role: user.role };
     }
 }

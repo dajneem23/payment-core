@@ -45,6 +45,7 @@ http:
         address: "http://user-service:3004/auth/verify"
         authResponseHeaders:
           - X-User-Id
+          - X-User-Role
 
     # Strip any client-supplied X-User-Id so a caller can't impersonate a user;
     # only the ForwardAuth response is allowed to set it.
@@ -52,3 +53,4 @@ http:
       headers:
         customRequestHeaders:
           X-User-Id: ""
+          X-User-Role: ""
