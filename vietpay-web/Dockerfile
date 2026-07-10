@@ -8,6 +8,8 @@ RUN npm run build
 
 # ── Serve stage ──
 FROM httpd:2.4-alpine
+# Start from the default config, then layer our overrides on top.
 COPY --from=build /app/dist /usr/local/apache2/htdocs/
-COPY httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY httpd-rewrite.conf /usr/local/apache2/conf/conf.d/rewrite.conf
+RUN echo "Include conf/conf.d/rewrite.conf" >> /usr/local/apache2/conf/httpd.conf
 EXPOSE 80

@@ -22,6 +22,11 @@ services:
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
     restart: unless-stopped
 
+  # ---------------------------------------------------------------- web -------
+  vietpay-web:
+    build: ./vietpay-web
+    restart: unless-stopped
+
   # ------------------------------------------------------------- datastores --
   postgres:
     image: postgres:16-alpine
