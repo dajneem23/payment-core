@@ -34,9 +34,6 @@ const spanProcessor = new BatchSpanProcessor(
 );
 
 // ── SDK ──────────────────────────────────────────────────────────────────
-// Explicit instrumentations for this service's stack: HTTP -> Express -> NestJS
-// -> pg (TypeORM) / ioredis (jti blacklist) / kafkajs (user.* events).
-// runtime-node adds event-loop/GC/heap metrics; undici traces global fetch.
 const sdk = new NodeSDK({
     resource,
     spanProcessors: [spanProcessor],

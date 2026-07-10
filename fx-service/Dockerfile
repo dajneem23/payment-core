@@ -1,34 +1,25 @@
-# ---- Base Node ----
-FROM node:24-alpine AS base
-RUN apk add --no-cache git
-WORKDIR /app
-RUN mkdir src
-RUN chown -R node:node /app
-USER node
-
-# ---- Dependencies ----
-FROM base AS dependencies
-COPY ./package*.json ./
-RUN npm ci -d
-
-# ---- Build ----
-FROM dependencies AS build
-WORKDIR /app
-COPY ./src /app/src
-COPY ./ts*.json ./
+# syntax=docker/dockerfile:1.7
+# ---- Builder: install ALL deps (cached) + compile TS ----
+FROM node:24-alpine AS builder
+WORKDIR /build
+COPY package*.json ./
+# BuildKit cache mount: reuse the npm cache across builds -> fast re-installs.
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY tsconfig*.json ./
+COPY src ./src
 RUN npm run build
 
-# ---- Polishing ----
-FROM base AS polishing
-COPY ./package*.json ./
-RUN npm ci --production -d
+# ---- Prod deps only (cached), for a slim runtime image ----
+FROM node:24-alpine AS proddeps
+WORKDIR /build
+COPY package*.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 
-# --- Release with Alpine ----
+# ---- Runtime ----
 FROM node:24-alpine AS release
 WORKDIR /app
-RUN mkdir dist node_modules
-RUN chown -R node:node /app
-USER node
-COPY --from=polishing app/node_modules node_modules/
-COPY --from=build app/dist dist/
-CMD ["node","dist/main.js"]
+RUN addgroup -S app && adduser -S app -G app
+COPY --from=proddeps /build/node_modules ./node_modules
+COPY --from=builder /build/dist ./dist
+USER app
+CMD ["node", "dist/main.js"]
