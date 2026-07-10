@@ -1,0 +1,75 @@
+### VietPay — Transfer flows (wallet-service, JWT-protected)
+### NOTE: POST /api/v1/transfers is being built. This file is the target
+### contract + shows the idempotency and insufficient-funds cases.
+### A new wallet has zero balance, so funding a successful transfer needs the
+### card top-up flow (payment-gateway) or a seeded balance.
+### Run `login` first; requests read tokens/ids inline from prior responses.
+
+@baseUrl = http://localhost
+@email = test2@vietpay.dev
+@password = Password123!
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+### Create source wallet
+# @name source
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{ "currency": "USD" }
+
+### Create destination wallet
+# @name dest
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{ "currency": "USD" }
+
+### Transfer $10.00 with an idempotency key -> 201 (requires funded source)
+POST {{baseUrl}}/api/v1/transfers
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 11111111-1111-1111-1111-111111111111
+Content-Type: application/json
+
+{
+  "sourceWalletId": "{{source.response.body.id}}",
+  "destWalletId": "{{dest.response.body.id}}",
+  "amount": "10.00",
+  "currency": "USD"
+}
+
+### Retry SAME request with SAME key -> money moves ONCE (idempotent replay)
+POST {{baseUrl}}/api/v1/transfers
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 11111111-1111-1111-1111-111111111111
+Content-Type: application/json
+
+{
+  "sourceWalletId": "{{source.response.body.id}}",
+  "destWalletId": "{{dest.response.body.id}}",
+  "amount": "10.00",
+  "currency": "USD"
+}
+
+### Overdraw attempt -> 422 insufficient funds
+POST {{baseUrl}}/api/v1/transfers
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 22222222-2222-2222-2222-222222222222
+Content-Type: application/json
+
+{
+  "sourceWalletId": "{{source.response.body.id}}",
+  "destWalletId": "{{dest.response.body.id}}",
+  "amount": "999999.00",
+  "currency": "USD"
+}
+
+### Source wallet transaction history
+GET {{baseUrl}}/api/v1/wallets/{{source.response.body.id}}/transactions
+Authorization: Bearer {{login.response.body.accessToken}}

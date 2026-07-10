@@ -6,6 +6,7 @@
 @email = test2@vietpay.dev
 @password = Password123!
 
+
 ### Login to obtain an access token
 # @name login
 POST {{baseUrl}}/auth/login
