@@ -3,14 +3,19 @@ package com.vietpay.wallet.application.wallet;
 import com.vietpay.wallet.domain.exception.ValidationException;
 import com.vietpay.wallet.domain.exception.WalletNotFoundException;
 import com.vietpay.wallet.domain.exception.WalletCurrencyNotSupportedException;
+import com.vietpay.wallet.domain.ledger.Ledger;
+import com.vietpay.wallet.domain.ledger.LedgerEntry;
 import com.vietpay.wallet.domain.wallet.Wallet;
 import com.vietpay.wallet.domain.wallet.WalletId;
 import com.vietpay.wallet.domain.wallet.Wallets;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,9 +35,11 @@ public class WalletService {
     private static final Set<String> SUPPORTED = Set.of("USD", "EUR", "VND", "GBP");
 
     private final Wallets wallets;
+    private final Ledger ledger;
 
-    public WalletService(Wallets wallets) {
+    public WalletService(Wallets wallets, Ledger ledger) {
         this.wallets = wallets;
+        this.ledger = ledger;
     }
 
     @Transactional
@@ -58,6 +65,40 @@ public class WalletService {
         return wallets.findById(WalletId.of(id))
             .map(WalletView::of)
             .orElseThrow(() -> new WalletNotFoundException(id));
+    }
+
+    /** Evict a wallet's cached balance view after its balance changes. Called by
+     *  the transfer/payment services once money has moved. */
+    @CacheEvict(cacheNames = WALLET_VIEW, key = "#id")
+    public void evictView(UUID id) {
+        // annotation-driven; body intentionally empty
+    }
+
+    /** Most-recent-first transaction history from the ledger. */
+    @Transactional(readOnly = true)
+    public List<LedgerEntry> transactions(UUID id, int limit, int offset) {
+        WalletId walletId = WalletId.of(id);
+        if (wallets.findById(walletId).isEmpty()) {
+            throw new WalletNotFoundException(id);
+        }
+        return ledger.history(walletId, limit, offset);
+    }
+
+    /**
+     * Reconcile the cached balance against the ledger (the source of truth).
+     * {@code balanced == true} proves the ledger backs the balance.
+     */
+    @Transactional(readOnly = true)
+    public Reconciliation reconcile(UUID id) {
+        Wallet wallet = wallets.findById(WalletId.of(id))
+            .orElseThrow(() -> new WalletNotFoundException(id));
+        BigDecimal cached = wallet.balance().amount();
+        BigDecimal fromLedger = ledger.reconciledBalanceAmount(wallet.id());
+        return new Reconciliation(id, cached, fromLedger, cached.compareTo(fromLedger) == 0);
+    }
+
+    public record Reconciliation(UUID walletId, BigDecimal cachedBalance,
+                                 BigDecimal ledgerBalance, boolean balanced) {
     }
 
     private static Currency parseCurrency(String code) {
