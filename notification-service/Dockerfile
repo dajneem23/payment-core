@@ -1,0 +1,34 @@
+# ---- Base Node ----
+FROM node:24-alpine AS base
+RUN apk add --no-cache git
+WORKDIR /app
+RUN mkdir src
+RUN chown -R node:node /app
+USER node
+
+# ---- Dependencies ----
+FROM base AS dependencies
+COPY ./package*.json ./
+RUN npm ci -d
+
+# ---- Build ----
+FROM dependencies AS build
+WORKDIR /app
+COPY ./src /app/src
+COPY ./ts*.json ./
+RUN npm run build
+
+# ---- Polishing ----
+FROM base AS polishing
+COPY ./package*.json ./
+RUN npm ci --production -d
+
+# --- Release with Alpine ----
+FROM node:24-alpine AS release
+WORKDIR /app
+RUN mkdir dist node_modules
+RUN chown -R node:node /app
+USER node
+COPY --from=polishing app/node_modules node_modules/
+COPY --from=build app/dist dist/
+CMD ["node","dist/main.js"]
