@@ -32,7 +32,7 @@ public class WalletJpaEntity {
     @Id
     private UUID id;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, length = 3)
     private String currency;
 
     @Column(nullable = false)

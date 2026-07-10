@@ -38,13 +38,13 @@ public class TransferJpaEntity {
     @Column(nullable = false, updatable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, length = 3)
     private String currency;
 
     @Column(name = "dest_amount", nullable = false, updatable = false)
     private BigDecimal destAmount;
 
-    @Column(name = "dest_currency", nullable = false, updatable = false)
+    @Column(name = "dest_currency", nullable = false, updatable = false, length = 3)
     private String destCurrency;
 
     @Column(name = "fx_rate", nullable = false, updatable = false)
