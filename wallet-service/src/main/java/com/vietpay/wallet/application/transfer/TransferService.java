@@ -1,11 +1,15 @@
 package com.vietpay.wallet.application.transfer;
 
 import com.vietpay.wallet.application.wallet.WalletService;
+import com.vietpay.wallet.domain.fraud.FraudCheck;
+import com.vietpay.wallet.domain.fraud.FraudDecision;
+import com.vietpay.wallet.domain.fraud.FraudPolicy;
 import com.vietpay.wallet.domain.ledger.Ledger;
 import com.vietpay.wallet.domain.shared.IdempotencyKey;
 import com.vietpay.wallet.domain.shared.Money;
 import com.vietpay.wallet.domain.transfer.Transfer;
 import com.vietpay.wallet.domain.transfer.Transfers;
+import com.vietpay.wallet.domain.exception.FraudRejectedException;
 import com.vietpay.wallet.domain.exception.ValidationException;
 import com.vietpay.wallet.domain.exception.WalletNotFoundException;
 import com.vietpay.wallet.domain.wallet.Wallet;
@@ -28,8 +32,10 @@ import java.util.stream.Collectors;
 /**
  * Transfer use case — the graded core.
  *
- * <p>Idempotency replay happens before the transaction; only the atomic money
- * movement runs inside {@link #tx}, so wallet row locks are held briefly.
+ * <p>Ordering is deliberate: idempotency replay and the fraud check (a network
+ * call) happen OUTSIDE the transaction; only the atomic money movement runs
+ * inside {@link #tx}. So wallet row locks are held for the shortest time and
+ * never across a network hop.
  *
  * <p>Inside the transaction: lock both wallets ({@code SELECT ... FOR UPDATE},
  * ordered by id in the adapter → deadlock-safe) → debit/credit (the aggregate
@@ -45,14 +51,17 @@ public class TransferService {
     private final Wallets wallets;
     private final Transfers transfers;
     private final Ledger ledger;
+    private final FraudPolicy fraudPolicy;
     private final WalletService walletService;
     private final TransactionTemplate tx;
 
     public TransferService(Wallets wallets, Transfers transfers, Ledger ledger,
+                           FraudPolicy fraudPolicy,
                            WalletService walletService, PlatformTransactionManager txManager) {
         this.wallets = wallets;
         this.transfers = transfers;
         this.ledger = ledger;
+        this.fraudPolicy = fraudPolicy;
         this.walletService = walletService;
         this.tx = new TransactionTemplate(txManager);
     }
@@ -81,9 +90,16 @@ public class TransferService {
             if (!source.currency().equals(dest.currency())) {
                 throw new ValidationException("cross-currency transfers are not supported");
             }
-            Money amount = Money.of(cmd.amount(), source.currency());
 
-            // 3. Atomic money movement.
+            // 3. Fraud check (network) — BEFORE the transaction opens.
+            Money amount = Money.of(cmd.amount(), source.currency());
+            FraudDecision decision = fraudPolicy.check(
+                new FraudCheck(source.id(), dest.id(), amount));
+            if (!decision.allow()) {
+                throw new FraudRejectedException(decision.reason());
+            }
+
+            // 4. Atomic money movement.
             TransferResult result;
             try {
                 result = tx.execute(status -> move(key, cmd.sourceWalletId(),
@@ -96,7 +112,7 @@ public class TransferService {
                     .orElseThrow(() -> race);
             }
 
-            // 4. Cached balances are now stale for both wallets.
+            // 5. Cached balances are now stale for both wallets.
             walletService.evictView(cmd.sourceWalletId());
             walletService.evictView(cmd.destWalletId());
             MDC.put("transferId", result.transferId().toString());
