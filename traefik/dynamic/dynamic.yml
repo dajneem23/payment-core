@@ -4,6 +4,13 @@
 
 http:
   routers:
+    # SPA catch-all — serves the VietPay web UI. Lowest priority so the more
+    # specific PathPrefix rules below (auth, api, fx) win for API routes.
+    web:
+      rule: "PathPrefix(`/`)"
+      entryPoints: [web]
+      service: web
+
     # Public auth endpoints (login/register/refresh/verify) — NO forward-auth.
     auth:
       rule: "PathPrefix(`/auth`)"
@@ -30,6 +37,10 @@ http:
       middlewares: [strip-inbound-headers, forward-auth]
 
   services:
+    web:
+      loadBalancer:
+        servers:
+          - url: "http://vietpay-web:80"
     auth:
       loadBalancer:
         servers:
