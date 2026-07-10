@@ -38,7 +38,7 @@ public class LedgerEntryJpaEntity {
     @Column(nullable = false, updatable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, length = 3)
     private String currency;
 
     @Column(name = "created_at", nullable = false, updatable = false)
