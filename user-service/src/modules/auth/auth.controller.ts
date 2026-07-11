@@ -47,6 +47,23 @@ export class AuthController {
     }
 
     /**
+     * "Who am I?" — called by the frontend on app load to check if the stored
+     * token is still valid and to hydrate the user context. Returns 200 with
+     * user info if the token passes signature + blacklist checks, 401 otherwise.
+     * Unlike /auth/verify (which is for Traefik ForwardAuth and sets response
+     * headers), this is a plain JSON endpoint for the SPA.
+     */
+    @Get('iam')
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Check token validity, return current user info' })
+    @ApiResponse({ status: 200, description: 'Token valid, user info returned' })
+    @ApiResponse({ status: 401, description: 'Token invalid, expired, or revoked' })
+    async iam(@Req() req: Request) {
+        const user = (req as any).user as JwtPayload;
+        return { sub: user.sub, email: user.email, role: user.role };
+    }
+
+    /**
      * Called by Traefik ForwardAuth on every protected request. Returns 200 with
      * X-User-Id + X-User-Role if the token is valid, 401 otherwise. The guard
      * validates the token and puts the payload on the request.
