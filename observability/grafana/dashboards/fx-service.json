@@ -1,0 +1,52 @@
+{
+  "uid": "vietpay-fx",
+  "title": "VietPay — fx-service (rates)",
+  "tags": ["vietpay", "fx-service"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Up",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ] }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "up{instance=~\"fx-service.*\"}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "FX API rate by status (edge)",
+      "gridPos": { "h": 9, "w": 9, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (code) (rate(traefik_service_requests_total{service=~\"fx@.*\"}[1m]))", "legendFormat": "{{code}}" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "FX API p95 latency (edge)",
+      "gridPos": { "h": 9, "w": 9, "x": 15, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"fx@.*\"}[5m])))", "legendFormat": "p95" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Resident memory",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "process_resident_memory_bytes{instance=~\"fx-service.*\"}", "legendFormat": "rss" } ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Event-loop lag",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "nodejs_eventloop_lag_seconds{instance=~\"fx-service.*\"}", "legendFormat": "lag" } ]
+    }
+  ]
+}

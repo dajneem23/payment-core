@@ -1,0 +1,53 @@
+{
+  "uid": "vietpay-payments",
+  "title": "VietPay — payment-gateway (card top-up)",
+  "tags": ["vietpay", "payment-gateway"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Up",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ] }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "up{instance=~\"payment-gateway.*\"}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Payments API rate by status (edge)",
+      "gridPos": { "h": 9, "w": 9, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (code) (rate(traefik_service_requests_total{service=~\"payments@.*\"}[1m]))", "legendFormat": "{{code}}" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Payments API p95 latency (edge)",
+      "gridPos": { "h": 9, "w": 9, "x": 15, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_service_request_duration_seconds_bucket{service=~\"payments@.*\"}[5m])))", "legendFormat": "p95" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Payments by scheme/status (business counter)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "From payments_total (prom-client). Populated once the counter is incremented in the topup/settlement path.",
+      "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (scheme, status) (rate(payments_total{instance=~\"payment-gateway.*\"}[5m]))", "legendFormat": "{{scheme}} {{status}}" } ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Resident memory",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "process_resident_memory_bytes{instance=~\"payment-gateway.*\"}", "legendFormat": "rss" } ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "uid": "vietpay-notification",
+  "title": "VietPay — notification-service",
+  "tags": ["vietpay", "notification-service"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Up",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ] }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "up{instance=~\"notification-service.*\"}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Kafka messages consumed by topic",
+      "gridPos": { "h": 9, "w": 18, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (topic) (rate(kafka_messages_consumed_total{instance=~\"notification-service.*\"}[5m]))", "legendFormat": "{{topic}}" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Emails sent (by status)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum by (status) (rate(emails_sent_total{instance=~\"notification-service.*\"}[5m]))", "legendFormat": "{{status}}" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Resident memory",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "process_resident_memory_bytes{instance=~\"notification-service.*\"}", "legendFormat": "rss" } ]
+    }
+  ]
+}
