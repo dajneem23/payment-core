@@ -39,6 +39,7 @@ export interface CreateWalletRequest {
 export interface Transaction {
   id: string;
   sourceRef: string;
+  sourceType: string;   // "TRANSFER" | "DEPOSIT" | ...
   direction: 'CREDIT' | 'DEBIT';
   amount: number;
   currency: string;

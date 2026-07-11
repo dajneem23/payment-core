@@ -76,7 +76,7 @@ export class ConfigService {
                 this.get('FX_SOURCE_URL') ||
                 'https://portal.vietcombank.com.vn/Usercontrols/TVPortal.TyGia/pXML.aspx',
             // How often the BullMQ repeatable job re-fetches (cron expression).
-            refreshCron: this.get('FX_REFRESH_CRON') || '*/5 * * * *',
+            refreshCron: this.get('FX_REFRESH_CRON') || '*/15 * * * *',
             timeoutMs: this.getNumber('FX_TIMEOUT_MS') || 5000,
         };
     }

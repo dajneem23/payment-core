@@ -9,7 +9,6 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:80',
       '/api': 'http://localhost:80',
-      '/fx': 'http://localhost:80',
       '/notifications': 'http://localhost:80',
     },
   },

@@ -7,7 +7,7 @@ import { FxService } from './fx.service';
 
 /** Read-only FX rates (vs VND), refreshed from Vietcombank by the cron job. */
 @ApiTags('FX')
-@Controller('fx')
+@Controller('api/fx')
 export class FxController {
     constructor(private readonly fxService: FxService) {}
 

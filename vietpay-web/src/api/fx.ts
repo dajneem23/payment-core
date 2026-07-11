@@ -2,12 +2,12 @@ import { apiClient } from './client';
 import type { FxRate, FxRateSnapshot, DepositRequest, DepositResult } from '../types';
 
 export async function getAllRates(): Promise<FxRate[]> {
-  const { data } = await apiClient.get<FxRate[]>('/fx/rates');
+  const { data } = await apiClient.get<FxRate[]>('/api/fx/rates');
   return data;
 }
 
 export async function getRate(code: string): Promise<FxRate> {
-  const { data } = await apiClient.get<FxRate>(`/fx/rates/${code}`);
+  const { data } = await apiClient.get<FxRate>(`/api/fx/rates/${code}`);
   return data;
 }
 
@@ -18,7 +18,7 @@ export async function getRateHistory(
   limit?: number,
 ): Promise<FxRateSnapshot[]> {
   const { data } = await apiClient.get<FxRateSnapshot[]>(
-    `/fx/rates/${code}/history`,
+    `/api/fx/rates/${code}/history`,
     { params: { from, to, limit } },
   );
   return data;
