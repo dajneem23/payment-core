@@ -48,7 +48,7 @@ export class AcquirerClient {
         const url = `${baseUrl}/acquirer/authorize`;
         const body = {
             paymentId: payment.id,
-            amount: payment.amount,
+            amount: String(payment.amount),
             currency: payment.currency,
             cardToken: payment.cardToken,
             bin: payment.bin,
@@ -70,7 +70,7 @@ export class AcquirerClient {
         const body = {
             paymentId: payment.id,
             providerRef,
-            amount: payment.amount,
+            amount: String(payment.amount),
             currency: payment.currency,
             callbackUrl,
         };
