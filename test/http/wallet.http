@@ -29,6 +29,10 @@ Content-Type: application/json
   "currency": "USD"
 }
 
+### List all my wallets -> 200
+GET {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+
 ### Get the wallet balance -> 200
 GET {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}
 Authorization: Bearer {{login.response.body.accessToken}}

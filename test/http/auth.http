@@ -30,6 +30,10 @@ Content-Type: application/json
   "password": "{{password}}"
 }
 
+### Iam ("Who am I?") — SPA checks if the stored token is still valid -> 200
+GET {{baseUrl}}/auth/iam
+Authorization: Bearer {{login.response.body.accessToken}}
+
 ### Verify (what Traefik ForwardAuth calls) -> 200 + X-User-Id header
 GET {{baseUrl}}/auth/verify
 Authorization: Bearer {{login.response.body.accessToken}}

@@ -51,6 +51,20 @@ services:
     ports:
       - "3003:3003"
 
-  # payment-gateway:
-  #   ports:
-  #     - "3000:3000"
+  payment-gateway:
+    environment:
+      NODE_ENV: development   # enables Swagger at /api/docs + verbose logging
+    ports:
+      - "3005:3005"
+
+  visa-service:
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3006:3006"
+
+  mastercard-service:
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3007:3007"

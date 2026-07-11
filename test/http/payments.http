@@ -1,0 +1,94 @@
+### VietPay — Card top-up flow (payment-gateway + simulated Visa/Mastercard)
+### Run `login` first; requests read tokens/ids inline from prior responses.
+###
+### Flow: POST /payments/topups -> gateway authorizes+captures with the acquirer
+### -> acquirer fires an async settlement webhook -> gateway emits PaymentCaptured
+### on Kafka -> wallet-service posts DEBIT card_clearing / CREDIT wallet. So the
+### wallet balance rises a moment AFTER the topup returns (settlement is async).
+
+@baseUrl = http://localhost
+@email = test2@vietpay.dev
+@password = Password123!
+
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "{{email}}", "password": "{{password}}" }
+
+### Create a USD wallet to top up
+# @name wallet
+POST {{baseUrl}}/api/v1/wallets
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{ "currency": "USD" }
+
+### Top up $10.00 with a Visa test card (BIN 411111 is on the allowlist) -> 201
+# @name topup
+POST {{baseUrl}}/payments/topups
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 44444444-4444-4444-4444-444444444444
+Content-Type: application/json
+
+{
+  "walletId": "{{wallet.response.body.id}}",
+  "amount": "10.00",
+  "currency": "USD",
+  "scheme": "VISA",
+  "cardToken": "tok_visa_test",
+  "bin": "411111"
+}
+
+### Retry SAME request with SAME key -> idempotent, no second charge (replay)
+POST {{baseUrl}}/payments/topups
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 44444444-4444-4444-4444-444444444444
+Content-Type: application/json
+
+{
+  "walletId": "{{wallet.response.body.id}}",
+  "amount": "10.00",
+  "currency": "USD",
+  "scheme": "VISA",
+  "cardToken": "tok_visa_test",
+  "bin": "411111"
+}
+
+### After a ~1.5s settlement delay, the wallet is credited (DEBIT card_clearing).
+GET {{baseUrl}}/api/v1/wallets/{{wallet.response.body.id}}
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### History shows a PAYMENT-sourced CREDIT (sourceType=PAYMENT, sourceRef=paymentId)
+GET {{baseUrl}}/api/v1/wallets/{{wallet.response.body.id}}/transactions
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### Disallowed BIN -> acquirer declines -> 422
+POST {{baseUrl}}/payments/topups
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 55555555-5555-5555-5555-555555555555
+Content-Type: application/json
+
+{
+  "walletId": "{{wallet.response.body.id}}",
+  "amount": "10.00",
+  "currency": "USD",
+  "scheme": "VISA",
+  "cardToken": "tok_visa_bad",
+  "bin": "999999"
+}
+
+### Mastercard top-up $5.00 (BIN 555555 on the MC allowlist) -> 201
+POST {{baseUrl}}/payments/topups
+Authorization: Bearer {{login.response.body.accessToken}}
+Idempotency-Key: 66666666-6666-6666-6666-666666666666
+Content-Type: application/json
+
+{
+  "walletId": "{{wallet.response.body.id}}",
+  "amount": "5.00",
+  "currency": "USD",
+  "scheme": "MASTERCARD",
+  "cardToken": "tok_mc_test",
+  "bin": "555555"
+}

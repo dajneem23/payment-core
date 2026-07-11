@@ -158,38 +158,44 @@ services:
       - traefik.http.services.notifications.loadbalancer.server.port=3003
     restart: unless-stopped
 
-  # payment-gateway:
-  #   build: ./services/payment-gateway
-  #   environment:
-  #     PORT: "3000"
-  #     WALLET_URL: http://wallet-service:8080
-  #     VISA_URL: http://visa-service:3010
-  #     MASTERCARD_URL: http://mastercard-service:3011
-  #     GATEWAY_URL: http://payment-gateway:3000
-  #   depends_on:
-  #     - wallet-service
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.payments.rule=PathPrefix(`/payments`)
-  #     - traefik.http.routers.payments.entrypoints=web
-  #     - traefik.http.services.payments.loadbalancer.server.port=3000
-  #   restart: unless-stopped
+  # -------------------------------------------- card payments (acquiring) ----
+  # Gateway owns the /payments API + settlement-webhook receiver + its own DB
+  # (vietpay_payments) and publishes PaymentCaptured to Kafka via a transactional
+  # outbox. wallet-service consumes payment-events and posts the double-entry.
+  payment-gateway:
+    build: ./payment-gateway
+    env_file:
+      - ./infra/docker/payment-gateway.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+    labels:
+      # Routing lives in traefik/dynamic/dynamic.yml (file provider); labels are
+      # documentation only. /payments is protected (forward-auth + strip).
+      - traefik.enable=true
+      - traefik.http.routers.payments.rule=PathPrefix(`/payments`)
+      - traefik.http.routers.payments.entrypoints=web
+      - traefik.http.services.payments.loadbalancer.server.port=3005
+    restart: unless-stopped
 
-  # visa-service:
-  #   build: ./services/visa-service
-  #   environment:
-  #     PORT: "3010"
-  #     SCHEME: VISA
-  #     GATEWAY_WEBHOOK_URL: http://payment-gateway:3000/payments/webhooks/visa
-  #   restart: unless-stopped
+  # Simulated acquirers — one shared codebase (acquirer-sim), two instances that
+  # differ only by env (scheme, BIN allowlist, HMAC secret). No public ingress:
+  # the gateway calls them east-west, and they webhook back over the network.
+  visa-service:
+    build: ./acquirer-sim
+    env_file:
+      - ./infra/docker/visa-service.env
+    depends_on:
+      - payment-gateway
+    restart: unless-stopped
 
-  # mastercard-service:
-  #   build: ./services/mastercard-service
-  #   environment:
-  #     PORT: "3011"
-  #     SCHEME: MASTERCARD
-  #     GATEWAY_WEBHOOK_URL: http://payment-gateway:3000/payments/webhooks/mastercard
-  #   restart: unless-stopped
+  mastercard-service:
+    build: ./acquirer-sim
+    env_file:
+      - ./infra/docker/mastercard-service.env
+    depends_on:
+      - payment-gateway
+    restart: unless-stopped
 
   # ----------------------------------------- observability (opt-in profile) --
   prometheus:

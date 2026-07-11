@@ -37,7 +37,7 @@ http:
 
     # FX rates — public read-only market data (bid/ask vs VND).
     fx:
-      rule: "PathPrefix(`/fx`)"
+      rule: "PathPrefix(`/api/fx`)"
       entryPoints: [web]
       service: fx
 
@@ -46,6 +46,16 @@ http:
       rule: "PathPrefix(`/api/v1`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/actuator`)"
       entryPoints: [web]
       service: wallet
+      middlewares: [strip-inbound-headers, forward-auth]
+
+    # Payments API (card top-up) — protected like the wallet API. A user tops up
+    # their OWN wallet, so the JWT identity (X-User-Id) is required. Acquirer
+    # settlement webhooks reach the gateway east-west (direct container call),
+    # NOT through this router, so they aren't subject to ForwardAuth.
+    payments:
+      rule: "PathPrefix(`/payments`)"
+      entryPoints: [web]
+      service: payments
       middlewares: [strip-inbound-headers, forward-auth]
 
   services:
@@ -75,6 +85,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://wallet-service:8080"
+    payments:
+      loadBalancer:
+        servers:
+          - url: "http://payment-gateway:3005"
 
   middlewares:
     # Traefik calls user-service /auth/verify; on 200 it copies X-User-Id onto
