@@ -9,7 +9,6 @@ import {
     NestExpressApplication,
     ExpressAdapter,
 } from '@nestjs/platform-express';
-import * as express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -28,14 +27,10 @@ async function bootstrap() {
         { cors: true, rawBody: true },
     );
 
-    // Capture raw body for HMAC signature verification on webhooks.
-    app.use(
-        express.json({
-            verify: (req: any, _res, buf) => {
-                req.rawBody = buf.toString();
-            },
-        }),
-    );
+    // NOTE: rawBody is captured by NestFactory's `rawBody: true` above and used
+    // for HMAC webhook verification. Do NOT add a second body parser (e.g.
+    // express.json) — it re-reads the already-drained stream and clobbers
+    // req.body to {}, which silently empties webhook DTOs.
 
     const loggerService = app.select(SharedModule).get(LoggerService);
     app.useLogger(loggerService);

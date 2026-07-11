@@ -119,6 +119,10 @@ export class PaymentsService {
     }
 
     async onSettlement(scheme: string, dto: SettlementWebhookDto) {
+        this.logger.log(
+            `Settlement webhook received: scheme=${scheme} paymentId=${dto?.paymentId} `
+            + `status=${dto?.status} event=${dto?.providerEventId}`,
+        );
         // Run in a DataSource transaction for atomicity
         const runner = this.dataSource.createQueryRunner();
         await runner.connect();
@@ -131,6 +135,7 @@ export class PaymentsService {
                 .findOne({ where: { providerEventId: dto.providerEventId } });
             if (existing) {
                 await runner.commitTransaction();
+                this.logger.log(`Duplicate webhook ${dto.providerEventId} — no-op`);
                 return { duplicate: true };
             }
 
@@ -185,16 +190,24 @@ export class PaymentsService {
                     },
                 });
                 await outboxRepo.save(outboxEvent);
+                this.logger.log(
+                    `Payment ${payment.id} CAPTURED — PaymentCaptured queued in outbox`,
+                );
             } else if (dto.status === 'FAILED') {
                 payment.status = PaymentStatus.FAILED;
                 await paymentRepo.save(payment);
-                // No outbox for failed settlements
+                this.logger.warn(`Payment ${payment.id} marked FAILED by acquirer`);
             }
 
             await runner.commitTransaction();
             return { success: true };
-        } catch (err) {
+        } catch (err: any) {
             await runner.rollbackTransaction();
+            this.logger.error(
+                `onSettlement failed (scheme=${scheme} paymentId=${dto?.paymentId} `
+                + `event=${dto?.providerEventId}): ${err?.message}`,
+                err?.stack,
+            );
             throw err;
         } finally {
             await runner.release();

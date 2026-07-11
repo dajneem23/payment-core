@@ -13,7 +13,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { AcquirerClient } from './acquirer.client';
-import type { SettlementWebhookDto } from './dtos/webhook.dto';
+import { SettlementWebhookDto } from './dtos/webhook.dto';
 import { TopupDto } from './dtos/topup.dto';
 import { verifySignature } from './hmac.util';
 import { PaymentsService } from './payments.service';
@@ -48,8 +48,9 @@ export class PaymentsController {
         @Req() req: Request,
         @Body() dto: SettlementWebhookDto,
     ) {
-        // Verify HMAC signature
-        const rawBody = (req as any).rawBody;
+        // Verify HMAC signature over the raw request body (Buffer from
+        // NestFactory `rawBody: true`).
+        const rawBody = (req as any).rawBody?.toString('utf8');
         if (!rawBody) {
             throw new UnauthorizedException('Missing raw body');
         }
