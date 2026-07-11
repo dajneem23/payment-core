@@ -39,5 +39,8 @@ public abstract class AbstractPostgresIT {
             "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"));
         // Fraud check is disabled by default; keep it so, so no fraud-service is needed.
         registry.add("app.fraud.enabled", () -> "false");
+        // Outbox relay publishes to Kafka + uses a Redis ShedLock — both excluded
+        // here, so disable the relay; the transfer path still writes outbox rows.
+        registry.add("app.outbox.enabled", () -> "false");
     }
 }

@@ -30,6 +30,7 @@ public record TransferCompleted(
 
     @Override
     public Map<String, Object> payload() {
+        // Wire contract consumed by notification-service (transfer-events topic).
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("eventId", eventId.toString());
         p.put("transferId", transferId.value().toString());
@@ -37,7 +38,8 @@ public record TransferCompleted(
         p.put("destWalletId", destWalletId.value().toString());
         p.put("amount", amount.amount().toPlainString());
         p.put("currency", amount.currencyCode());
-        p.put("occurredAt", occurredAt.toString());
+        p.put("status", "COMPLETED");
+        p.put("timestamp", occurredAt.toString());
         return p;
     }
 }

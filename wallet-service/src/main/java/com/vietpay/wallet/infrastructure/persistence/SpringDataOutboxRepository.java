@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;
 
-interface SpringDataOutboxRepository extends JpaRepository<OutboxEventJpaEntity, UUID> {
+public interface SpringDataOutboxRepository extends JpaRepository<OutboxEventJpaEntity, UUID> {
 
     /** Oldest-first batch of unpublished events for the relay to drain. */
     List<OutboxEventJpaEntity> findByStatusOrderByCreatedAtAsc(String status, Limit limit);

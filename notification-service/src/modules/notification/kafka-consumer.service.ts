@@ -8,12 +8,10 @@ import { NotificationService } from './notification.service';
 interface TransferEvent {
     transferId: string;
     sourceWalletId: string;
-    targetWalletId: string;
+    destWalletId: string;       // domain term — consistent with the Transfer aggregate
     amount: string;
     currency: string;
     status: string;
-    sourceUserId: string;
-    targetUserId: string;
     timestamp: string;
 }
 
