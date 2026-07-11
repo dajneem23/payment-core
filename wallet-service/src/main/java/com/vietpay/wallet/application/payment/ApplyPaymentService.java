@@ -67,7 +67,8 @@ public class ApplyPaymentService {
         try {
             boolean applied = Boolean.TRUE.equals(tx.execute(status -> post(cmd)));
             if (applied) {
-                walletService.evictView(cmd.walletId());   // cached balance is now stale
+                walletService.evictView(CARD_CLEARING.value());
+                walletService.evictView(cmd.walletId());
                 log.info("card top-up applied: {} {} -> wallet {}",
                     cmd.amount(), cmd.currency(), cmd.walletId());
             }
