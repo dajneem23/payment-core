@@ -58,6 +58,9 @@ public class TransferJpaEntity {
     @Column(name = "response_snapshot")
     private String responseSnapshot;
 
+    @Column(name = "remark", nullable = true)
+    private String remark;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -66,7 +69,8 @@ public class TransferJpaEntity {
 
     public TransferJpaEntity(UUID id, String idempotencyKey, UUID sourceWalletId,
                              UUID destWalletId, BigDecimal amount, String currency,
-                             TransferStatus status, String responseSnapshot, Instant createdAt) {
+                             TransferStatus status, String responseSnapshot, String remark,
+                             Instant createdAt) {
         this.id = id;
         this.idempotencyKey = idempotencyKey;
         this.sourceWalletId = sourceWalletId;
@@ -79,6 +83,7 @@ public class TransferJpaEntity {
         this.fxRate = BigDecimal.ONE;
         this.status = status;
         this.responseSnapshot = responseSnapshot;
+        this.remark = remark;
         this.createdAt = createdAt;
     }
 
@@ -108,6 +113,10 @@ public class TransferJpaEntity {
 
     public TransferStatus getStatus() {
         return status;
+    }
+
+    public String getRemark() {
+        return remark;
     }
 
     public Instant getCreatedAt() {

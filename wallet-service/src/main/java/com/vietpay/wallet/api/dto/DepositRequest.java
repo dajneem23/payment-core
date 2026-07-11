@@ -11,6 +11,7 @@ import java.math.BigDecimal;
  *  {@code Idempotency-Key} header. The currency must match the wallet. */
 public record DepositRequest(
     @NotNull @DecimalMin(value = "0.0001") BigDecimal amount,
-    @NotBlank @Size(min = 3, max = 3) String currency
+    @NotBlank @Size(min = 3, max = 3) String currency,
+    String remark
 ) {
 }

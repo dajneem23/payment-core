@@ -9,6 +9,7 @@ public record DepositCommand(
     String idempotencyKey,
     UUID walletId,
     BigDecimal amount,
-    String currency
+    String currency,
+    String remark
 ) {
 }

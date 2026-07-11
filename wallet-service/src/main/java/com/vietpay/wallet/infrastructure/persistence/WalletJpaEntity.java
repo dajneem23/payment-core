@@ -42,6 +42,9 @@ public class WalletJpaEntity {
     @Column(nullable = false, updatable = false)
     private WalletKind kind;
 
+    @Column(name = "owner_user_id", nullable = true, updatable = false)
+    private UUID ownerUserId;
+
     @Version
     private long version;
 
@@ -55,11 +58,13 @@ public class WalletJpaEntity {
         // for JPA
     }
 
-    public WalletJpaEntity(UUID id, String currency, BigDecimal balance, WalletKind kind) {
+    public WalletJpaEntity(UUID id, String currency, BigDecimal balance, WalletKind kind,
+                           UUID ownerUserId) {
         this.id = id;
         this.currency = currency;
         this.balance = balance;
         this.kind = kind;
+        this.ownerUserId = ownerUserId;
     }
 
     @PrePersist
@@ -92,5 +97,9 @@ public class WalletJpaEntity {
 
     public WalletKind getKind() {
         return kind;
+    }
+
+    public UUID getOwnerUserId() {
+        return ownerUserId;
     }
 }

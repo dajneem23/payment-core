@@ -10,6 +10,7 @@ import com.vietpay.wallet.domain.shared.Money;
 import com.vietpay.wallet.domain.shared.EventOutbox;
 import com.vietpay.wallet.domain.transfer.Transfer;
 import com.vietpay.wallet.domain.transfer.Transfers;
+import com.vietpay.wallet.domain.exception.ForbiddenException;
 import com.vietpay.wallet.domain.exception.FraudRejectedException;
 import com.vietpay.wallet.domain.exception.ValidationException;
 import com.vietpay.wallet.domain.exception.WalletNotFoundException;
@@ -69,7 +70,7 @@ public class TransferService {
         this.tx = new TransactionTemplate(txManager);
     }
 
-    public TransferResult transfer(TransferCommand cmd) {
+    public TransferResult transfer(TransferCommand cmd, String callerUserId) {
         validate(cmd);
         IdempotencyKey key = IdempotencyKey.of(cmd.idempotencyKey());
         MDC.put("idempotencyKey", key.value());
@@ -85,6 +86,12 @@ public class TransferService {
             // 2. Existence + currency checks (unlocked read).
             Wallet source = requireWallet(cmd.sourceWalletId());
             Wallet dest = requireWallet(cmd.destWalletId());
+
+            // Ownership check: only the wallet owner can initiate a transfer from it.
+            if (source.kind() == com.vietpay.wallet.domain.wallet.WalletKind.USER
+                && !callerUserId.equals(source.ownerUserId())) {
+                throw new ForbiddenException("not the owner of source wallet");
+            }
             String currency = source.currency().getCurrencyCode();
             if (!currency.equals(cmd.currency())) {
                 throw new ValidationException("amount currency %s does not match source wallet %s"
@@ -106,7 +113,7 @@ public class TransferService {
             TransferResult result;
             try {
                 result = tx.execute(status -> move(key, cmd.sourceWalletId(),
-                    cmd.destWalletId(), amount));
+                    cmd.destWalletId(), amount, cmd.remark()));
             } catch (DataIntegrityViolationException race) {
                 // A concurrent request with the same key won the insert -> replay it.
                 log.info("idempotency race for key={}, replaying winner", key.value());
@@ -128,7 +135,7 @@ public class TransferService {
 
     /** The transactional unit — runs with both wallet rows locked FOR UPDATE. */
     private TransferResult move(IdempotencyKey key, java.util.UUID sourceId,
-                                java.util.UUID destId, Money amount) {
+                                java.util.UUID destId, Money amount, String remark) {
         Map<WalletId, Wallet> locked = wallets
             .lockForUpdate(List.of(WalletId.of(sourceId), WalletId.of(destId))).stream()
             .collect(Collectors.toMap(Wallet::id, Function.identity()));
@@ -142,8 +149,9 @@ public class TransferService {
         wallets.save(source);
         wallets.save(dest);
 
-        Transfer transfer = Transfer.complete(key, source.id(), dest.id(), amount);
-        transfers.save(transfer);                          // UNIQUE key -> idempotency guard
+        Transfer transfer = Transfer.complete(key, source.id(), dest.id(), amount,
+            source.ownerUserId(), dest.ownerUserId(), remark);
+        transfers.save(transfer);
         ledger.append(transfer.toLedgerEntries());         // balanced debit + credit
         outbox.append("Transfer", transfer.id().value(), transfer.pullDomainEvents());
         return TransferResult.from(transfer);

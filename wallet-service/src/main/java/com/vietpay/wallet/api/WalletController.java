@@ -39,8 +39,10 @@ public class WalletController {
     }
 
     @PostMapping
-    public ResponseEntity<WalletResponse> create(@Valid @RequestBody CreateWalletRequest request) {
-        WalletResponse body = WalletResponse.from(walletService.create(request.currency()));
+    public ResponseEntity<WalletResponse> create(
+            @RequestHeader("X-User-Id") String userId,
+            @Valid @RequestBody CreateWalletRequest request) {
+        WalletResponse body = WalletResponse.from(walletService.create(request.currency(), userId));
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
@@ -55,12 +57,14 @@ public class WalletController {
             @PathVariable UUID id,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader(value = "X-User-Role", required = false) String role,
+            @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody DepositRequest request) {
         if (!"ADMIN".equals(role)) {
             throw new ForbiddenException("deposit requires ADMIN role");
         }
         DepositResponse body = DepositResponse.from(depositService.deposit(
-            new DepositCommand(idempotencyKey, id, request.amount(), request.currency())));
+            new DepositCommand(idempotencyKey, id, request.amount(), request.currency(), request.remark()),
+            userId));
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 

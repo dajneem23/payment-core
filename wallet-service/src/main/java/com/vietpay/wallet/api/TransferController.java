@@ -28,10 +28,12 @@ public class TransferController {
     @PostMapping
     public ResponseEntity<TransferResponse> transfer(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody TransferRequest request) {
         TransferResponse body = TransferResponse.from(transferService.transfer(
             new TransferCommand(idempotencyKey, request.sourceWalletId(),
-                request.destWalletId(), request.amount(), request.currency())));
+                request.destWalletId(), request.amount(), request.currency(), request.remark()),
+            userId));
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 }

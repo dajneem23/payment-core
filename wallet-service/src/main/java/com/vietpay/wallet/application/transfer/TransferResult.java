@@ -17,7 +17,8 @@ public record TransferResult(
     UUID destWalletId,
     BigDecimal amount,
     String currency,
-    Instant createdAt
+    Instant createdAt,
+    String remark
 ) {
 
     public static TransferResult from(Transfer t) {
@@ -28,6 +29,7 @@ public record TransferResult(
             t.destWalletId().value(),
             t.amount().amount(),
             t.amount().currencyCode(),
-            t.occurredAt());
+            t.timestamp(),
+            t.remark());
     }
 }

@@ -19,8 +19,11 @@ public record TransferCompleted(
     TransferId transferId,
     WalletId sourceWalletId,
     WalletId destWalletId,
+    String sourceUserId,
+    String destUserId,
     Money amount,
-    Instant occurredAt
+    Instant occurredAt,
+    String remark
 ) implements DomainEvent {
 
     @Override
@@ -36,10 +39,13 @@ public record TransferCompleted(
         p.put("transferId", transferId.value().toString());
         p.put("sourceWalletId", sourceWalletId.value().toString());
         p.put("destWalletId", destWalletId.value().toString());
+        p.put("sourceUserId", sourceUserId);
+        p.put("destUserId", destUserId);
         p.put("amount", amount.amount().toPlainString());
         p.put("currency", amount.currencyCode());
         p.put("status", "COMPLETED");
         p.put("timestamp", occurredAt.toString());
+        p.put("remark", remark);
         return p;
     }
 }

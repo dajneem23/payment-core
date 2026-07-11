@@ -61,7 +61,6 @@ public class OutboxRelay {
                 event.markPublished();
                 published++;
             } catch (Exception e) {
-                // Leave this and later rows PENDING; retry on the next poll.
                 log.warn("outbox publish failed for {}, will retry: {}", event.getId(), e.toString());
                 break;
             }

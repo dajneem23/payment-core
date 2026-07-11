@@ -19,24 +19,28 @@ public class Wallet {
     private final WalletId id;
     private final Currency currency;
     private final WalletKind kind;
+    private final String ownerUserId;    // null for SYSTEM accounts
     private Money balance;
 
-    private Wallet(WalletId id, Currency currency, WalletKind kind, Money balance) {
+    private Wallet(WalletId id, Currency currency, WalletKind kind, String ownerUserId,
+                   Money balance) {
         this.id = id;
         this.currency = currency;
         this.kind = kind;
+        this.ownerUserId = ownerUserId;
         this.balance = balance;
     }
 
-    /** Open a brand-new, empty USER wallet in the given currency. */
-    public static Wallet open(Currency currency) {
-        return new Wallet(WalletId.newId(), currency, WalletKind.USER, Money.zero(currency));
+    /** Open a brand-new, empty USER wallet owned by the given user. */
+    public static Wallet open(Currency currency, String ownerUserId) {
+        return new Wallet(WalletId.newId(), currency, WalletKind.USER, ownerUserId,
+            Money.zero(currency));
     }
 
     /** Rehydrate an existing wallet from persisted state (used by adapters). */
     public static Wallet rehydrate(WalletId id, Currency currency, WalletKind kind,
-                                   Money balance) {
-        return new Wallet(id, currency, kind, balance);
+                                   String ownerUserId, Money balance) {
+        return new Wallet(id, currency, kind, ownerUserId, balance);
     }
 
     /** Add funds. */
@@ -69,6 +73,10 @@ public class Wallet {
 
     public WalletKind kind() {
         return kind;
+    }
+
+    public String ownerUserId() {
+        return ownerUserId;
     }
 
     public Money balance() {

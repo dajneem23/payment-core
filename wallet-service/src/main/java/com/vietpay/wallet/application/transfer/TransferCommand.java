@@ -10,6 +10,7 @@ public record TransferCommand(
     UUID sourceWalletId,
     UUID destWalletId,
     BigDecimal amount,
-    String currency
+    String currency,
+    String remark
 ) {
 }

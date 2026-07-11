@@ -23,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class IdempotencyIT extends AbstractPostgresIT {
 
+    private static final String USER_ID = "00000000-0000-0000-0000-000000000099";
+
     @Autowired TransferService transferService;
     @Autowired DepositService depositService;
     @Autowired WalletService walletService;
@@ -30,16 +32,16 @@ class IdempotencyIT extends AbstractPostgresIT {
 
     @Test
     void sameKeyTwice_movesMoneyOnce() {
-        WalletView source = walletService.create("USD");
-        WalletView dest = walletService.create("USD");
+        WalletView source = walletService.create("USD", USER_ID);
+        WalletView dest = walletService.create("USD", USER_ID);
         fund(source.id(), "100.00");
 
         String key = UUID.randomUUID().toString();
         TransferCommand cmd = new TransferCommand(
-            key, source.id(), dest.id(), new BigDecimal("30.00"), "USD");
+            key, source.id(), dest.id(), new BigDecimal("30.00"), "USD", null);
 
-        TransferResult first = transferService.transfer(cmd);
-        TransferResult replay = transferService.transfer(cmd);   // identical retry
+        TransferResult first = transferService.transfer(cmd, USER_ID);
+        TransferResult replay = transferService.transfer(cmd, USER_ID);   // identical retry
 
         // Same outcome returned, not a new transfer.
         assertThat(replay.transferId()).isEqualTo(first.transferId());
@@ -65,6 +67,7 @@ class IdempotencyIT extends AbstractPostgresIT {
 
     private void fund(UUID walletId, String amount) {
         depositService.deposit(new DepositCommand(
-            UUID.randomUUID().toString(), walletId, new BigDecimal(amount), "USD"));
+            UUID.randomUUID().toString(), walletId, new BigDecimal(amount), "USD", null),
+            "00000000-0000-0000-0000-000000000099");
     }
 }

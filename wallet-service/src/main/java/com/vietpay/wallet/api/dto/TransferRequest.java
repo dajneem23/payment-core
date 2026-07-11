@@ -14,6 +14,7 @@ public record TransferRequest(
     @NotNull UUID sourceWalletId,
     @NotNull UUID destWalletId,
     @NotNull @DecimalMin(value = "0.0001") BigDecimal amount,
-    @NotBlank @Size(min = 3, max = 3) String currency
+    @NotBlank @Size(min = 3, max = 3) String currency,
+    String remark
 ) {
 }

@@ -32,14 +32,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ConcurrencyIT extends AbstractPostgresIT {
 
+    private static final String USER_ID = "00000000-0000-0000-0000-000000000099";
+
     @Autowired TransferService transferService;
     @Autowired DepositService depositService;
     @Autowired WalletService walletService;
 
     @Test
     void concurrentTransfers_cannotOverdraw() throws Exception {
-        WalletView source = walletService.create("USD");
-        WalletView dest = walletService.create("USD");
+        WalletView source = walletService.create("USD", USER_ID);
+        WalletView dest = walletService.create("USD", USER_ID);
 
         BigDecimal amount = new BigDecimal("10.00");
         int capacity = 10;                 // 100.00 funds exactly 10 transfers of 10.00
@@ -58,7 +60,8 @@ class ConcurrencyIT extends AbstractPostgresIT {
                 try {
                     transferService.transfer(new TransferCommand(
                         UUID.randomUUID().toString(),   // distinct key per attempt
-                        source.id(), dest.id(), amount, "USD"));
+                        source.id(), dest.id(), amount, "USD", null),
+                        USER_ID);
                     succeeded.incrementAndGet();
                 } catch (InsufficientFundsException expected) {
                     insufficient.incrementAndGet();
@@ -88,6 +91,7 @@ class ConcurrencyIT extends AbstractPostgresIT {
 
     private void fund(UUID walletId, String amount) {
         depositService.deposit(new DepositCommand(
-            UUID.randomUUID().toString(), walletId, new BigDecimal(amount), "USD"));
+            UUID.randomUUID().toString(), walletId, new BigDecimal(amount), "USD", null),
+            "00000000-0000-0000-0000-000000000099");
     }
 }

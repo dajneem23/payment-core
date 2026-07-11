@@ -37,14 +37,15 @@ public class DepositService {
         this.transferService = transferService;
     }
 
-    public TransferResult deposit(DepositCommand cmd) {
+    public TransferResult deposit(DepositCommand cmd, String callerUserId) {
         UUID fundingAccount = FUNDING_ACCOUNTS.get(cmd.currency());
         if (fundingAccount == null) {
             throw new WalletCurrencyNotSupportedException(cmd.currency());
         }
-        // Funding account -> wallet. The transfer path enforces that the wallet's
-        // currency matches cmd.currency, so a mismatch is rejected consistently.
+        // Funding account -> wallet. The ownership check lets SYSTEM accounts pass;
+        // callerUserId is recorded on the transfer for audit but not enforced here.
         return transferService.transfer(new TransferCommand(
-            cmd.idempotencyKey(), fundingAccount, cmd.walletId(), cmd.amount(), cmd.currency()));
+            cmd.idempotencyKey(), fundingAccount, cmd.walletId(), cmd.amount(), cmd.currency(),cmd.remark()),
+            callerUserId);
     }
 }

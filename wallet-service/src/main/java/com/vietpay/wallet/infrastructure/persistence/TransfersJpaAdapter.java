@@ -49,7 +49,8 @@ public class TransfersJpaAdapter implements Transfers {
             transfer.amount().currencyCode(),
             transfer.status(),
             snapshot(transfer),
-            transfer.occurredAt()));
+            transfer.remark(),
+            transfer.timestamp()));
     }
 
     /** Audit copy of the result stored alongside the transfer row. */
@@ -75,6 +76,7 @@ public class TransfersJpaAdapter implements Transfers {
             WalletId.of(e.getDestWalletId()),
             Money.of(e.getAmount(), e.getCurrency()),
             e.getStatus(),
+            e.getRemark(),
             e.getCreatedAt());
     }
 }

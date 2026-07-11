@@ -43,7 +43,7 @@ public class WalletService {
     }
 
     @Transactional
-    public WalletView create(String currencyCode) {
+    public WalletView create(String currencyCode, String ownerUserId) {
         // 400 if not a real ISO code
         Currency currency = parseCurrency(currencyCode);
         if (!SUPPORTED.contains(currency.getCurrencyCode())) {
@@ -51,7 +51,7 @@ public class WalletService {
             throw new WalletCurrencyNotSupportedException(currency.getCurrencyCode());
         }
         // aggregate factory owns construction
-        Wallet wallet = Wallet.open(currency);
+        Wallet wallet = Wallet.open(currency, ownerUserId);
         wallets.save(wallet);
         return WalletView.of(wallet);
     }

@@ -33,18 +33,20 @@ public class Transfer extends AggregateRoot {
     private final WalletId destWalletId;
     private final Money amount;
     private final TransferStatus status;
-    private final Instant occurredAt;
+    private final String remark;
+    private final Instant timestamp;
 
     private Transfer(TransferId id, IdempotencyKey idempotencyKey, WalletId sourceWalletId,
                      WalletId destWalletId, Money amount, TransferStatus status,
-                     Instant occurredAt) {
+                     String remark, Instant timestamp) {
         this.id = id;
         this.idempotencyKey = idempotencyKey;
         this.sourceWalletId = sourceWalletId;
         this.destWalletId = destWalletId;
         this.amount = amount;
         this.status = status;
-        this.occurredAt = occurredAt;
+        this.remark = remark;
+        this.timestamp = timestamp;
     }
 
     /**
@@ -53,7 +55,7 @@ public class Transfer extends AggregateRoot {
      * invalid transfer can never exist.
      */
     public static Transfer complete(IdempotencyKey key, WalletId source, WalletId dest,
-                                    Money amount) {
+                                    Money amount, String sourceUserId, String destUserId,String remark) {
         if (source.equals(dest)) {
             throw new IllegalArgumentException("source and destination must differ");
         }
@@ -63,9 +65,9 @@ public class Transfer extends AggregateRoot {
         TransferId id = TransferId.newId();
         Instant now = Instant.now();
         Transfer transfer = new Transfer(id, key, source, dest, amount,
-            TransferStatus.COMPLETED, now);
+            TransferStatus.COMPLETED, remark, now);
         transfer.registerEvent(new TransferCompleted(
-            UUID.randomUUID(), id, source, dest, amount, now));
+            UUID.randomUUID(), id, source, dest, sourceUserId, destUserId, amount, now, remark));
         return transfer;
     }
 
@@ -73,8 +75,8 @@ public class Transfer extends AggregateRoot {
      *  event is raised — this is not a new occurrence. */
     public static Transfer rehydrate(TransferId id, IdempotencyKey key, WalletId source,
                                      WalletId dest, Money amount, TransferStatus status,
-                                     Instant occurredAt) {
-        return new Transfer(id, key, source, dest, amount, status, occurredAt);
+                                     String remark, Instant timestamp) {
+        return new Transfer(id, key, source, dest, amount, status, remark, timestamp);
     }
 
     /**
@@ -111,7 +113,11 @@ public class Transfer extends AggregateRoot {
         return status;
     }
 
-    public Instant occurredAt() {
-        return occurredAt;
+    public String remark() {
+        return remark;
+    }
+
+    public Instant timestamp() {
+        return timestamp;
     }
 }

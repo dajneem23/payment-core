@@ -16,19 +16,24 @@ final class WalletMapper {
 
     static Wallet toDomain(WalletJpaEntity e) {
         Currency currency = Currency.getInstance(e.getCurrency());
+        String ownerUserId = e.getOwnerUserId() != null ? e.getOwnerUserId().toString() : null;
         return Wallet.rehydrate(
             WalletId.of(e.getId()),
             currency,
             e.getKind(),
+            ownerUserId,
             Money.of(e.getBalance(), currency));
     }
 
     static WalletJpaEntity toNewEntity(Wallet w) {
+        java.util.UUID ownerUuid = w.ownerUserId() != null
+            ? java.util.UUID.fromString(w.ownerUserId()) : null;
         return new WalletJpaEntity(
             w.id().value(),
             w.currency().getCurrencyCode(),
             w.balance().amount(),
-            w.kind());
+            w.kind(),
+            ownerUuid);
     }
 
     /** Copy mutable state from the aggregate onto an already-managed row.
