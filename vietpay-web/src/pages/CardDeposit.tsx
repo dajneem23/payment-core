@@ -42,10 +42,14 @@ export function CardDeposit() {
   useEffect(() => {
     walletsApi.listMyWallets()
       .then((data) => {
+        console.log('CardDeposit: wallets loaded', data.length);
         setWallets(data);
         if (data.length > 0) setWalletId(data[0].id);
       })
-      .catch((err: unknown) => console.error('Failed to load wallets:', err))
+      .catch((err: unknown) => {
+        console.error('CardDeposit: failed to load wallets', err);
+        setError('Failed to load wallets. Check your connection and try again.');
+      })
       .finally(() => setLoadingWallets(false));
   }, []);
 
@@ -68,6 +72,7 @@ export function CardDeposit() {
     if (isNaN(numAmount) || numAmount <= 0) { setError('Enter a valid amount'); return; }
     if (!walletId) { setError('Select a wallet to deposit into'); return; }
 
+    console.log('CardDeposit: submitting topup', { walletId, amount: numAmount, currency, scheme: brand, bin: rawNumber.slice(0, 6) });
     setSubmitting(true);
     try {
       const res = await paymentsApi.topup({
@@ -81,6 +86,7 @@ export function CardDeposit() {
       setResult(res);
       setAmount('');
     } catch (err: unknown) {
+      console.error('CardDeposit: topup failed', err);
       setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
       setSubmitting(false);
@@ -207,7 +213,16 @@ export function CardDeposit() {
           <h2 className="text-sm font-semibold text-gray-700">Deposit to</h2>
 
           {wallets.length === 0 ? (
-            <p className="text-sm text-gray-400">No wallets available. Create one first.</p>
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">Wallet ID (manual)</span>
+              <input
+                type="text"
+                value={walletId}
+                onChange={(e) => setWalletId(e.target.value)}
+                placeholder="Enter wallet UUID"
+                className="mt-1 w-full border border-gray-300 rounded px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
           ) : (
             <label className="block">
               <span className="text-sm font-medium text-gray-700">Wallet</span>
@@ -259,7 +274,7 @@ export function CardDeposit() {
 
         <button
           type="submit"
-          disabled={submitting || wallets.length === 0}
+          disabled={submitting}
           className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
         >
           {submitting ? 'Processing…' : `Deposit ${amount ? amount : '...'} ${currency}`}

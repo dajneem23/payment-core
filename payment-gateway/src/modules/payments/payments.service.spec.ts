@@ -53,6 +53,7 @@ describe('PaymentsService', () => {
                     findOne: jest.fn(),
                     insert: jest.fn(),
                     save: jest.fn(),
+                    create: jest.fn(),
                 }),
             },
         };
@@ -218,6 +219,7 @@ describe('PaymentsService', () => {
                 findOne: findOneMock,
                 insert: insertMock,
                 save: saveMock,
+                create: jest.fn().mockReturnValue({}),
             });
 
             // First call: no existing
@@ -270,6 +272,7 @@ describe('PaymentsService', () => {
                 findOne: findOneMock,
                 insert: insertMock,
                 save: saveMock,
+                create: jest.fn().mockReturnValue({}),
             });
 
             findOneMock
