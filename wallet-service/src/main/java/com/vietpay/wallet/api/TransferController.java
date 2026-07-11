@@ -5,6 +5,11 @@ import com.vietpay.wallet.api.dto.TransferRequest;
 import com.vietpay.wallet.api.dto.TransferResponse;
 import com.vietpay.wallet.application.transfer.TransferCommand;
 import com.vietpay.wallet.application.transfer.TransferService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +28,7 @@ import java.util.UUID;
  *  header — the same key moves money at most once. */
 @RestController
 @RequestMapping("/api/v1/transfers")
+@Tag(name = "Transfers", description = "Move money between wallets — idempotent and overdraw-safe")
 public class TransferController {
 
     private final TransferService transferService;
@@ -32,8 +38,22 @@ public class TransferController {
     }
 
     @PostMapping
+    @Operation(summary = "Send money to another wallet",
+        description = "Moves the amount from the source wallet to the destination wallet in one "
+            + "atomic double-entry posting. Retry-safe: sending the same Idempotency-Key again "
+            + "moves money at most once and returns the original result.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Transfer completed (or the original result replayed)"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "403", description = "Caller does not own the source wallet"),
+        @ApiResponse(responseCode = "404", description = "Source or destination wallet not found"),
+        @ApiResponse(responseCode = "409", description = "Idempotency-Key already used for a different request"),
+        @ApiResponse(responseCode = "422", description = "Insufficient funds, or currency mismatch")})
     public ResponseEntity<TransferResponse> transfer(
+            @Parameter(description = "Unique key so retries don't double-move money",
+                example = "11111111-1111-1111-1111-111111111111")
             @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Parameter(description = "Caller's user id (set by the gateway from your JWT)")
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody TransferRequest request) {
         TransferResponse body = TransferResponse.from(transferService.transfer(
@@ -51,8 +71,16 @@ public class TransferController {
      */
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Get a transfer by id",
+        description = "Returns a transfer's full detail (amount, both wallets, remark, timestamp). "
+            + "Only a participant — the owner of the source or destination wallet — may view it.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "The transfer detail"),
+        @ApiResponse(responseCode = "403", description = "Caller is not a participant in this transfer"),
+        @ApiResponse(responseCode = "404", description = "Transfer not found")})
     public TransferDetailResponse get(
-            @PathVariable UUID id,
+            @Parameter(description = "Transfer id") @PathVariable UUID id,
+            @Parameter(description = "Caller's user id (set by the gateway from your JWT)")
             @RequestHeader("X-User-Id") String userId) {
         return TransferDetailResponse.from(transferService.getTransfer(id, userId));
     }

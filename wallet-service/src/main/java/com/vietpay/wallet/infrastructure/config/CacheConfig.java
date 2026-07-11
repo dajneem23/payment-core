@@ -40,7 +40,9 @@ public class CacheConfig implements CachingConfigurer {
             .serializeValuesWith(SerializationPair.fromSerializer(
                 new Jackson2JsonRedisSerializer<>(objectMapper,
                     com.vietpay.wallet.application.wallet.WalletView.class)));
-        return builder -> builder.withCacheConfiguration(WalletService.WALLET_VIEW, walletView);
+        return builder -> 
+        builder.withCacheConfiguration(WalletService.WALLET_VIEW, walletView);
+        //add more region here
     }
 
     /** Fail-open: log and continue instead of propagating cache errors, so a
