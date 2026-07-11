@@ -44,8 +44,10 @@ export class ConfigService {
 
     get typeOrmConfig(): TypeOrmModuleOptions {
         const entities = [__dirname + '/../../modules/**/*.entity{.ts,.js}'];
+        const migrations = [__dirname + '/../../migrations/*{.ts,.js}'];
         return {
             entities,
+            migrations,
             type: 'postgres',
             host: this.get('DB_HOST'),
             port: this.getNumber('DB_PORT'),
@@ -53,6 +55,7 @@ export class ConfigService {
             password: this.get('DB_PASSWORD'),
             database: this.get('DB_DATABASE'),
             synchronize: this.nodeEnv !== 'production',
+            migrationsRun: true,
             logging: this.nodeEnv === 'development',
         };
     }

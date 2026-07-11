@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { FxRate } from './entities/fx-rate.entity';
+import { FxRateSnapshot } from './entities/fx-rate-snapshot.entity';
 import { FxController } from './fx.controller';
 import { FxRefreshProcessor, FX_REFRESH_QUEUE } from './fx-refresh.processor';
 import { FxRefreshScheduler } from './fx-refresh.scheduler';
@@ -11,7 +12,7 @@ import { VcbFetchService } from './vcb-fetch.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([FxRate]),
+        TypeOrmModule.forFeature([FxRate, FxRateSnapshot]),
         BullModule.registerQueue({ name: FX_REFRESH_QUEUE }),
     ],
     controllers: [FxController],

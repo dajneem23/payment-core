@@ -25,9 +25,15 @@ export class FxRefreshProcessor extends WorkerHost {
     }
 
     async process(job: Job): Promise<{ count: number }> {
-        const rates = await this.vcbFetch.fetchRates();
-        const count = await this.fxService.upsertMany(rates);
-        this.logger.log(`refreshed ${count} FX rates (job ${job.name})`);
-        return { count };
+        try {
+            const rates = await this.vcbFetch.fetchRates();
+            const count = await this.fxService.upsertMany(rates);
+            this.logger.log(`refreshed ${count} FX rates (job ${job.name})`);
+            return { count };
+        } catch (error) {
+            this.logger.error(`failed to refresh FX rates (job ${job.name})`, error instanceof Error ? error.stack : String(error));
+            throw error;
+        }
+
     }
 }
