@@ -54,7 +54,7 @@ export class ConfigService {
             username: this.get('DB_USERNAME'),
             password: this.get('DB_PASSWORD'),
             database: this.get('DB_DATABASE'),
-            synchronize: this.nodeEnv !== 'production',
+            synchronize: false,
             migrationsRun: true,
             logging: this.nodeEnv === 'development',
         };

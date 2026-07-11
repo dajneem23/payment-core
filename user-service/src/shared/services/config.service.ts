@@ -79,9 +79,8 @@ export class ConfigService {
             username: this.get('DB_USERNAME'),
             password: this.get('DB_PASSWORD'),
             database: this.get('DB_DATABASE'),
-            // Peripheral service: let TypeORM manage its own schema in dev.
-            // The money-critical schema (wallet-service) uses Flyway, never auto-create.
-            synchronize: this.nodeEnv !== 'production',
+            synchronize: false,
+            migrationsRun: true,
             logging: this.nodeEnv === 'development',
             namingStrategy: new SnakeNamingStrategy(),
         };

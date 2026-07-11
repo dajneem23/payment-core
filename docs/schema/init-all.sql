@@ -32,5 +32,5 @@ CREATE DATABASE vietpay_users    OWNER vietpay;   -- auth (user-service; schema 
 \connect vietpay_payments
 \i vietpay_payments.sql
 
--- vietpay_users has no snapshot here: user-service manages its own schema via
--- TypeORM (synchronize in dev). Start user-service to create it, or add a dump.
+\connect vietpay_users
+\i vietpay_users.sql
