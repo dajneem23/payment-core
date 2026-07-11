@@ -21,7 +21,7 @@ export function WalletDetail() {
     Promise.all([
       walletsApi.getWallet(id),
       walletsApi.getTransactions(id, LIMIT, 0),
-      walletsApi.getReconciliation(id).catch(() => null), // reconciliation may fail if no ledger entries
+      walletsApi.getReconciliation(id).catch(() => null),
     ])
       .then(([w, t, r]) => {
         setWallet(w);
@@ -60,12 +60,8 @@ export function WalletDetail() {
     );
   }
 
-  const statusColor =
-    recon?.inSync === true
-      ? 'text-green-600'
-      : recon?.inSync === false
-        ? 'text-red-600'
-        : 'text-gray-400';
+  const diff = recon ? recon.cachedBalance - recon.ledgerBalance : 0;
+  const statusColor = recon?.balanced ? 'text-green-600' : 'text-red-600';
 
   return (
     <div>
@@ -83,10 +79,10 @@ export function WalletDetail() {
           </div>
           {recon && (
             <div className={`text-sm font-medium ${statusColor}`}>
-              {recon.inSync ? '✓ In sync' : '⚠ Out of sync'}
-              {!recon.inSync && (
+              {recon.balanced ? '✓ In sync' : '⚠ Out of sync'}
+              {!recon.balanced && (
                 <span className="block text-xs text-red-500">
-                  Diff: {recon.difference.toFixed(2)}
+                  Diff: {diff.toFixed(2)}
                 </span>
               )}
             </div>
@@ -104,45 +100,46 @@ export function WalletDetail() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">Date</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">Type</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500">ID</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500">Direction</th>
                   <th className="text-right px-4 py-2 font-medium text-gray-500">Amount</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">Counterparty</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-500">Source Ref</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {txns.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-500 font-mono text-xs whitespace-nowrap">
-                      {new Date(t.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                          t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN'
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-red-50 text-red-700'
+                {txns.map((t) => {
+                  const isCredit = t.direction === 'CREDIT';
+                  return (
+                    <tr key={t.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-gray-500 font-mono text-xs truncate max-w-32">
+                        {t.id.slice(0, 8)}…
+                      </td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                            isCredit
+                              ? 'bg-green-50 text-green-700'
+                              : 'bg-red-50 text-red-700'
+                          }`}
+                        >
+                          {t.direction}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-right font-mono ${
+                          isCredit ? 'text-green-600' : 'text-red-600'
                         }`}
                       >
-                        {t.type.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-right font-mono ${
-                        t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN'
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN' ? '+' : '-'}
-                      {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}{' '}
-                      {t.currency}
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 font-mono text-xs truncate max-w-48">
-                      {t.counterpartyWalletId || '—'}
-                    </td>
-                  </tr>
-                ))}
+                        {isCredit ? '+' : '-'}
+                        {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}{' '}
+                        {t.currency}
+                      </td>
+                      <td className="px-4 py-2 text-gray-500 font-mono text-xs truncate max-w-48">
+                        {t.sourceRef ? t.sourceRef.slice(0, 8) + '…' : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

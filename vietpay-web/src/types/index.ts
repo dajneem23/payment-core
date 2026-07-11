@@ -22,56 +22,58 @@ export interface JwtPayload {
   role: string; // e.g. USER, ADMIN
 }
 
-// ── Wallet ──
+// ── Wallet (matches WalletResponse) ──
 
 export interface Wallet {
   id: string;
   currency: string;
   balance: number;
-  createdAt: string;
 }
 
 export interface CreateWalletRequest {
   currency: string;
 }
 
+// ── Transaction (matches TransactionResponse / LedgerEntry) ──
+
 export interface Transaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'TRANSFER_IN' | 'TRANSFER_OUT';
+  sourceRef: string;
+  direction: 'CREDIT' | 'DEBIT';
   amount: number;
   currency: string;
-  counterpartyWalletId?: string;
-  createdAt: string;
 }
+
+// ── Reconciliation ──
 
 export interface Reconciliation {
   walletId: string;
   cachedBalance: number;
   ledgerBalance: number;
-  inSync: boolean;
-  difference: number;
+  balanced: boolean;
 }
 
-// ── Transfer ──
+// ── Transfer (matches TransferResponse) ──
 
 export interface TransferRequest {
   sourceWalletId: string;
   destWalletId: string;
   amount: number;
   currency: string;
+  remark?: string;
 }
 
 export interface TransferResult {
-  id: string;
+  transferId: string;
+  status: string;
   sourceWalletId: string;
   destWalletId: string;
   amount: number;
   currency: string;
-  status: string;
   createdAt: string;
 }
 
-// ── Deposit ──
+// ── Deposit (matches DepositResponse) ──
 
 export interface DepositRequest {
   amount: number;
@@ -79,11 +81,12 @@ export interface DepositRequest {
 }
 
 export interface DepositResult {
-  transactionId: string;
+  depositId: string;
   walletId: string;
   amount: number;
   currency: string;
-  newBalance: number;
+  status: string;
+  createdAt: string;
 }
 
 // ── FX ──

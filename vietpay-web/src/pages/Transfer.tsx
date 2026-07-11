@@ -9,6 +9,7 @@ export function Transfer() {
   const [sourceId, setSourceId] = useState('');
   const [destId, setDestId] = useState('');
   const [amount, setAmount] = useState('');
+  const [remark, setRemark] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<TransferResult | null>(null);
   const [error, setError] = useState('');
@@ -64,6 +65,7 @@ export function Transfer() {
         destWalletId: destId,
         amount: numAmount,
         currency,
+        remark: remark || undefined,
       });
       setResult(res);
       setAmount('');
@@ -102,7 +104,7 @@ export function Transfer() {
           <p className="font-semibold">Transfer completed</p>
           <p className="mt-1">
             {result.amount.toLocaleString()} {result.currency} sent — ID:{' '}
-            <span className="font-mono text-xs">{result.id}</span>
+            <span className="font-mono text-xs">{result.transferId}</span>
           </p>
         </div>
       )}
@@ -162,6 +164,17 @@ export function Transfer() {
             />
           </label>
         </div>
+
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-700 mb-4">
+          Remark (optional)
+          <input
+            type="text"
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            placeholder="What's this transfer for?"
+            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </label>
 
         <button
           type="submit"

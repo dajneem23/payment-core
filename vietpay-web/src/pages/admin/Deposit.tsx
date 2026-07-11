@@ -56,12 +56,14 @@ export function Deposit() {
 
       {result && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 text-sm rounded">
-          <p className="font-semibold">Deposit successful</p>
+          <p className="font-semibold">Deposit submitted</p>
           <p className="mt-1">
-            +{result.amount.toLocaleString()} {result.currency} — new balance:{' '}
-            {result.newBalance.toLocaleString()}
+            +{result.amount.toLocaleString()} {result.currency} — status:{' '}
+            {result.status}
           </p>
-          <p className="text-xs text-green-600 font-mono mt-1">Txn: {result.transactionId}</p>
+          <p className="text-xs text-green-600 font-mono mt-1">
+            Deposit ID: {result.depositId} &middot; Wallet: {result.walletId}
+          </p>
         </div>
       )}
 
