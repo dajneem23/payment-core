@@ -27,6 +27,24 @@ export class PaymentsService {
         private readonly logger: LoggerService,
     ) {}
 
+    async findById(id: string) {
+        const payment = await this.paymentRepo.findOne({ where: { id } });
+        if (!payment) {
+            throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+        }
+        return {
+            paymentId: payment.id,
+            walletId: payment.walletId,
+            scheme: payment.scheme,
+            bin: payment.bin,
+            amount: payment.amount,
+            currency: payment.currency,
+            status: payment.status,
+            providerRef: payment.providerRef,
+            createdAt: payment.createdAt,
+        };
+    }
+
     async topup(dto: TopupDto, ownerUserId: string, idempotencyKey: string) {
         // 1. Replay detection
         const existing = await this.paymentRepo.findOne({

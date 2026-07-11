@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Get,
     Headers,
     HttpCode,
     HttpStatus,
@@ -25,6 +26,11 @@ export class PaymentsController {
         private readonly paymentsService: PaymentsService,
         private readonly acquirer: AcquirerClient,
     ) {}
+
+    @Get(':id')
+    async get(@Param('id') id: string) {
+        return this.paymentsService.findById(id);
+    }
 
     @Post('topups')
     async topup(

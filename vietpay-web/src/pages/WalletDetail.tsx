@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as walletsApi from '../api/wallets';
 import * as transfersApi from '../api/transfers';
+import * as paymentsApi from '../api/payments';
 import type { Wallet, Transaction, Reconciliation, TransferDetail } from '../types';
 
 function txnIcon(direction: string) {
@@ -21,7 +22,8 @@ export function WalletDetail() {
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [detail, setDetail] = useState<TransferDetail | null>(null);
+  const [detail, setDetail] = useState<TransferDetail | paymentsApi.PaymentDetail | null>(null);
+  const [detailType, setDetailType] = useState<'TRANSFER' | 'PAYMENT' | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const LIMIT = 20;
 
@@ -72,14 +74,22 @@ export function WalletDetail() {
     }
   };
 
-  const openDetail = async (sourceRef: string) => {
+  const openDetail = async (txn: Transaction) => {
     setDetailLoading(true);
     setDetail(null);
+    setDetailType(null);
     try {
-      const d = await transfersApi.getTransferDetail(sourceRef);
-      setDetail(d);
+      if (txn.sourceType === 'PAYMENT') {
+        const d = await paymentsApi.getPayment(txn.sourceRef);
+        setDetail(d);
+        setDetailType('PAYMENT');
+      } else {
+        const d = await transfersApi.getTransferDetail(txn.sourceRef);
+        setDetail(d);
+        setDetailType('TRANSFER');
+      }
     } catch (err: unknown) {
-      console.error('Failed to load transfer detail:', err);
+      console.error(`Failed to load ${txn.sourceType} detail:`, err);
     } finally {
       setDetailLoading(false);
     }
@@ -140,55 +150,54 @@ export function WalletDetail() {
       {/* Transfer detail panel */}
       {detailLoading && (
         <div className="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-400">
-          Loading transfer details…
+          Loading details…
         </div>
       )}
-      {detail && (
+      {detail && detailType === 'TRANSFER' && (
         <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-50">
             <h3 className="text-sm font-semibold">Transfer Detail</h3>
-            <button
-              onClick={() => setDetail(null)}
-              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
-            >
-              ✕ Close
-            </button>
+            <button onClick={() => setDetail(null)} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">✕ Close</button>
           </div>
           <div className="p-4 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-gray-400">Transfer ID</div>
-              <div className="font-mono text-xs">{detail.transferId}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Status</div>
-              <span className="inline-block text-xs font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">
-                {detail.status}
-              </span>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Source Wallet</div>
-              <div className="font-mono text-xs">{detail.sourceWalletId}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Destination Wallet</div>
-              <div className="font-mono text-xs">{detail.destWalletId}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Amount</div>
-              <div className="font-mono font-semibold">
-                {detail.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {detail.currency}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Date</div>
-              <div className="text-xs">{new Date(detail.createdAt).toLocaleString()}</div>
-            </div>
-            {detail.remark && (
-              <div className="col-span-2">
-                <div className="text-xs text-gray-400">Remark</div>
-                <div className="text-sm text-gray-700">{detail.remark}</div>
-              </div>
-            )}
+            {(() => {
+              const d = detail as TransferDetail;
+              return (
+                <>
+                  <div><div className="text-xs text-gray-400">Transfer ID</div><div className="font-mono text-xs">{d.transferId}</div></div>
+                  <div><div className="text-xs text-gray-400">Status</div><span className="inline-block text-xs font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">{d.status}</span></div>
+                  <div><div className="text-xs text-gray-400">Source Wallet</div><div className="font-mono text-xs">{d.sourceWalletId}</div></div>
+                  <div><div className="text-xs text-gray-400">Destination Wallet</div><div className="font-mono text-xs">{d.destWalletId}</div></div>
+                  <div><div className="text-xs text-gray-400">Amount</div><div className="font-mono font-semibold">{d.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {d.currency}</div></div>
+                  <div><div className="text-xs text-gray-400">Date</div><div className="text-xs">{new Date(d.createdAt).toLocaleString()}</div></div>
+                  {d.remark && <div className="col-span-2"><div className="text-xs text-gray-400">Remark</div><div className="text-sm text-gray-700">{d.remark}</div></div>}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+      {detail && detailType === 'PAYMENT' && (
+        <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <h3 className="text-sm font-semibold">Card Payment Detail</h3>
+            <button onClick={() => setDetail(null)} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">✕ Close</button>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3 text-sm">
+            {(() => {
+              const d = detail as paymentsApi.PaymentDetail;
+              return (
+                <>
+                  <div><div className="text-xs text-gray-400">Payment ID</div><div className="font-mono text-xs">{d.paymentId}</div></div>
+                  <div><div className="text-xs text-gray-400">Status</div><span className="inline-block text-xs font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">{d.status}</span></div>
+                  <div><div className="text-xs text-gray-400">Scheme</div><span className="text-xs font-medium">{d.scheme}</span></div>
+                  <div><div className="text-xs text-gray-400">BIN</div><div className="font-mono text-xs">{d.bin}</div></div>
+                  <div><div className="text-xs text-gray-400">Amount</div><div className="font-mono font-semibold">{d.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {d.currency}</div></div>
+                  <div><div className="text-xs text-gray-400">Date</div><div className="text-xs">{new Date(d.createdAt).toLocaleString()}</div></div>
+                  {d.providerRef && <div className="col-span-2"><div className="text-xs text-gray-400">Provider Ref</div><div className="font-mono text-xs">{d.providerRef}</div></div>}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -202,11 +211,14 @@ export function WalletDetail() {
           <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
             {txns.map((t) => {
               const isCredit = t.direction === 'CREDIT';
-              const isActive = detail?.transferId === t.sourceRef;
+              const isActive = detail
+                ? (detailType === 'TRANSFER' && (detail as TransferDetail).transferId === t.sourceRef) ||
+                  (detailType === 'PAYMENT' && (detail as paymentsApi.PaymentDetail).paymentId === t.sourceRef)
+                : false;
               return (
                 <div
                   key={t.id}
-                  onClick={() => openDetail(t.sourceRef)}
+                  onClick={() => openDetail(t)}
                   className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
                     isActive ? 'bg-blue-50 ring-1 ring-blue-200' : ''
                   }`}
