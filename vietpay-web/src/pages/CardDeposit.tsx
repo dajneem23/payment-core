@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import * as walletsApi from '../api/wallets';
+import * as paymentsApi from '../api/payments';
 import type { Wallet } from '../types';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'VND'];
@@ -35,7 +36,7 @@ export function CardDeposit() {
   const [currency, setCurrency] = useState('USD');
   const [walletId, setWalletId] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<paymentsApi.TopupResult | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -69,10 +70,15 @@ export function CardDeposit() {
 
     setSubmitting(true);
     try {
-      // TODO: Replace with real payment gateway API when implemented
-      // POST /api/v1/payments/card { cardNumber, expiry, cvv, cardHolder, amount, currency, walletId }
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setResult('Card deposit submitted! (Gateway integration pending)');
+      const res = await paymentsApi.topup({
+        walletId,
+        amount: numAmount.toString(),
+        currency,
+        scheme: brand === 'visa' ? 'VISA' : 'MASTERCARD',
+        cardToken: rawNumber, // dev: use raw PAN as token (prod: PCI token)
+        bin: rawNumber.slice(0, 6),
+      });
+      setResult(res);
       setAmount('');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Payment failed');
@@ -97,7 +103,15 @@ export function CardDeposit() {
       )}
 
       {result && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{result}</div>
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 text-sm rounded">
+          <p className="font-semibold">Payment submitted</p>
+          <p className="mt-1">
+            {parseFloat(result.amount).toLocaleString()} {result.currency} via {result.scheme}
+          </p>
+          <p className="text-xs text-green-600 font-mono mt-1">
+            Payment ID: {result.paymentId} &middot; Status: {result.status}
+          </p>
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
