@@ -26,6 +26,7 @@ public class GlobalExceptionHandler {
     private static final Map<ErrorCode, HttpStatus> STATUS = Map.of(
         ErrorCode.VALIDATION_ERROR, HttpStatus.BAD_REQUEST,
         ErrorCode.WALLET_NOT_FOUND, HttpStatus.NOT_FOUND,
+        ErrorCode.TRANSFER_NOT_FOUND, HttpStatus.NOT_FOUND,
         ErrorCode.PAYMENT_NOT_FOUND, HttpStatus.NOT_FOUND,
         ErrorCode.INSUFFICIENT_FUNDS, HttpStatus.UNPROCESSABLE_ENTITY,
         ErrorCode.CURRENCY_UNSUPPORTED, HttpStatus.UNPROCESSABLE_ENTITY,

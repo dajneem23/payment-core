@@ -2,6 +2,7 @@ package com.vietpay.wallet.infrastructure.persistence;
 
 import com.vietpay.wallet.domain.ledger.Ledger;
 import com.vietpay.wallet.domain.ledger.LedgerEntry;
+import com.vietpay.wallet.domain.ledger.SourceType;
 import com.vietpay.wallet.domain.shared.Money;
 import com.vietpay.wallet.domain.wallet.WalletId;
 import org.springframework.data.domain.PageRequest;
@@ -46,14 +47,16 @@ public class LedgerJpaAdapter implements Ledger {
 
     private static LedgerEntryJpaEntity toJpa(LedgerEntry e) {
         return new LedgerEntryJpaEntity(
-            e.id(), e.sourceRef(), e.walletId().value(),
+            e.id(), e.sourceType(), e.sourceRef(), e.walletId().value(),
             e.direction(), e.amount().amount(), e.amount().currencyCode());
     }
 
     private static LedgerEntry toDomain(LedgerEntryJpaEntity e) {
-        UUID sourceRef = e.getTransferId() != null ? e.getTransferId() : e.getPaymentId();
+        boolean isPayment = e.getTransferId() == null && e.getPaymentId() != null;
+        SourceType sourceType = isPayment ? SourceType.PAYMENT : SourceType.TRANSFER;
+        UUID sourceRef = isPayment ? e.getPaymentId() : e.getTransferId();
         return new LedgerEntry(
-            e.getId(), sourceRef, WalletId.of(e.getWalletId()),
+            e.getId(), sourceRef, sourceType, WalletId.of(e.getWalletId()),
             e.getDirection(), Money.of(e.getAmount(), e.getCurrency()));
     }
 }

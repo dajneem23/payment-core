@@ -17,6 +17,7 @@ import java.util.UUID;
 public record LedgerEntry(
     UUID id,
     UUID sourceRef,          // transfer id or payment id that caused this entry
+    SourceType sourceType,   // which kind of source the ref points at
     WalletId walletId,
     Direction direction,
     Money amount
@@ -24,6 +25,7 @@ public record LedgerEntry(
 
     public LedgerEntry {
         Objects.requireNonNull(sourceRef, "sourceRef");
+        Objects.requireNonNull(sourceType, "sourceType");
         Objects.requireNonNull(walletId, "walletId");
         Objects.requireNonNull(direction, "direction");
         Objects.requireNonNull(amount, "amount");
@@ -33,11 +35,11 @@ public record LedgerEntry(
         }
     }
 
-    public static LedgerEntry debit(UUID sourceRef, WalletId walletId, Money amount) {
-        return new LedgerEntry(UUID.randomUUID(), sourceRef, walletId, Direction.DEBIT, amount);
+    public static LedgerEntry debit(UUID sourceRef, SourceType sourceType, WalletId walletId, Money amount) {
+        return new LedgerEntry(UUID.randomUUID(), sourceRef, sourceType, walletId, Direction.DEBIT, amount);
     }
 
-    public static LedgerEntry credit(UUID sourceRef, WalletId walletId, Money amount) {
-        return new LedgerEntry(UUID.randomUUID(), sourceRef, walletId, Direction.CREDIT, amount);
+    public static LedgerEntry credit(UUID sourceRef, SourceType sourceType, WalletId walletId, Money amount) {
+        return new LedgerEntry(UUID.randomUUID(), sourceRef, sourceType, walletId, Direction.CREDIT, amount);
     }
 }

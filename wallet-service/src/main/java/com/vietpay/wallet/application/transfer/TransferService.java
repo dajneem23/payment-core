@@ -9,9 +9,11 @@ import com.vietpay.wallet.domain.shared.IdempotencyKey;
 import com.vietpay.wallet.domain.shared.Money;
 import com.vietpay.wallet.domain.shared.EventOutbox;
 import com.vietpay.wallet.domain.transfer.Transfer;
+import com.vietpay.wallet.domain.transfer.TransferId;
 import com.vietpay.wallet.domain.transfer.Transfers;
 import com.vietpay.wallet.domain.exception.ForbiddenException;
 import com.vietpay.wallet.domain.exception.FraudRejectedException;
+import com.vietpay.wallet.domain.exception.TransferNotFoundException;
 import com.vietpay.wallet.domain.exception.ValidationException;
 import com.vietpay.wallet.domain.exception.WalletNotFoundException;
 import com.vietpay.wallet.domain.wallet.Wallet;
@@ -23,6 +25,7 @@ import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -70,8 +73,7 @@ public class TransferService {
         this.tx = new TransactionTemplate(txManager);
     }
 
-    public TransferResult transfer(TransferCommand cmd, String callerUserId) {
-        validate(cmd);
+    public TransferResult transfer(TransferCommand cmd, String callerUserId) {        validate(cmd);
         IdempotencyKey key = IdempotencyKey.of(cmd.idempotencyKey());
         MDC.put("idempotencyKey", key.value());
         MDC.put("sourceWalletId", cmd.sourceWalletId().toString());
@@ -131,6 +133,27 @@ public class TransferService {
         } finally {
             MDC.clear();
         }
+    }
+
+    /**
+     * Fetch a single transfer's detail. Authorization: the caller must be a
+     * participant — the owner of the source OR destination wallet — otherwise a
+     * transfer is not disclosed (403), so one user can never read another's
+     * money movements. SYSTEM wallets have no owner and never match a caller.
+     */
+    @Transactional(readOnly = true)
+    public TransferResult getTransfer(java.util.UUID transferId, String callerUserId) {
+        Transfer transfer = transfers.findById(TransferId.of(transferId))
+            .orElseThrow(() -> new TransferNotFoundException(transferId));
+
+        Wallet source = requireWallet(transfer.sourceWalletId().value());
+        Wallet dest = requireWallet(transfer.destWalletId().value());
+        boolean isParticipant = callerUserId.equals(source.ownerUserId())
+            || callerUserId.equals(dest.ownerUserId());
+        if (!isParticipant) {
+            throw new ForbiddenException("not a participant in this transfer");
+        }
+        return TransferResult.from(transfer);
     }
 
     /** The transactional unit — runs with both wallet rows locked FOR UPDATE. */

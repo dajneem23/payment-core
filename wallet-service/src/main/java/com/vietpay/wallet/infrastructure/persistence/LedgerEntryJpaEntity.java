@@ -1,6 +1,7 @@
 package com.vietpay.wallet.infrastructure.persistence;
 
 import com.vietpay.wallet.domain.ledger.Direction;
+import com.vietpay.wallet.domain.ledger.SourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -47,10 +48,20 @@ public class LedgerEntryJpaEntity {
     protected LedgerEntryJpaEntity() {
     }
 
-    public LedgerEntryJpaEntity(UUID id, UUID transferId, UUID walletId, Direction direction,
-                                BigDecimal amount, String currency) {
+    /**
+     * Construct an entry, routing {@code sourceRef} into the matching FK column:
+     * a TRANSFER source populates {@code transfer_id}, a PAYMENT source populates
+     * {@code payment_id}. Exactly one is ever set, mirroring the polymorphic
+     * {@code sourceRef} on the domain entry.
+     */
+    public LedgerEntryJpaEntity(UUID id, SourceType sourceType, UUID sourceRef, UUID walletId,
+                                Direction direction, BigDecimal amount, String currency) {
         this.id = id;
-        this.transferId = transferId;
+        if (sourceType == SourceType.PAYMENT) {
+            this.paymentId = sourceRef;
+        } else {
+            this.transferId = sourceRef;
+        }
         this.walletId = walletId;
         this.direction = direction;
         this.amount = amount;

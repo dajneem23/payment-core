@@ -39,6 +39,11 @@ public class TransfersJpaAdapter implements Transfers {
     }
 
     @Override
+    public Optional<Transfer> findById(TransferId id) {
+        return repository.findById(id.value()).map(TransfersJpaAdapter::toDomain);
+    }
+
+    @Override
     public void save(Transfer transfer) {
         repository.saveAndFlush(new TransferJpaEntity(
             transfer.id().value(),

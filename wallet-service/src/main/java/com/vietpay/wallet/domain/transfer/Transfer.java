@@ -1,6 +1,7 @@
 package com.vietpay.wallet.domain.transfer;
 
 import com.vietpay.wallet.domain.ledger.LedgerEntry;
+import com.vietpay.wallet.domain.ledger.SourceType;
 import com.vietpay.wallet.domain.shared.AggregateRoot;
 import com.vietpay.wallet.domain.shared.IdempotencyKey;
 import com.vietpay.wallet.domain.shared.Money;
@@ -85,8 +86,8 @@ public class Transfer extends AggregateRoot {
      */
     public List<LedgerEntry> toLedgerEntries() {
         return List.of(
-            LedgerEntry.debit(id.value(), sourceWalletId, amount),
-            LedgerEntry.credit(id.value(), destWalletId, amount));
+            LedgerEntry.debit(id.value(), SourceType.TRANSFER, sourceWalletId, amount),
+            LedgerEntry.credit(id.value(), SourceType.TRANSFER, destWalletId, amount));
     }
 
     public TransferId id() {

@@ -8,6 +8,7 @@ package com.vietpay.wallet.domain.exception;
 public enum ErrorCode {
     VALIDATION_ERROR,
     WALLET_NOT_FOUND,
+    TRANSFER_NOT_FOUND,
     INSUFFICIENT_FUNDS,
     IDEMPOTENCY_CONFLICT,
     CURRENCY_UNSUPPORTED,

@@ -16,6 +16,9 @@ public interface Transfers {
     /** Find a previously-recorded transfer by its idempotency key. */
     Optional<Transfer> findByIdempotencyKey(IdempotencyKey key);
 
+    /** Find a transfer by its id (for the detail/history read path). */
+    Optional<Transfer> findById(TransferId id);
+
     /**
      * Persist a new transfer. Implementations must surface a unique-constraint
      * violation (not swallow it) so the application layer can detect the
