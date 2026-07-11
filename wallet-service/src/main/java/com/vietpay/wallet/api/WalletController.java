@@ -68,6 +68,7 @@ public class WalletController {
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody DepositRequest request) {
+        //todo: handle role check more efficiently, maybe with a custom annotation or a filter
         if (!"ADMIN".equals(role)) {
             throw new ForbiddenException("deposit requires ADMIN role");
         }

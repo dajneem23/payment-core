@@ -20,8 +20,12 @@ import java.util.UUID;
  * redelivery is safe.
  *
  * <p>Only {@code PaymentCaptured} carries a money effect; other event types are
- * ignored. A handler that throws does NOT commit the offset, so the message is
- * redelivered — the idempotency guard makes that safe.
+ * ignored. Failure handling is split by cause (see {@link KafkaConsumerConfig}):
+ * a TRANSIENT fault (lock timeout, DB blip) throws and is retried, then
+ * dead-lettered; a malformed/unparseable event throws
+ * {@link PoisonPaymentEventException} and is dead-lettered immediately (retrying
+ * it would only block the partition). Either way the offset advances after the
+ * record reaches {@code payment-events.DLT}.
  */
 @Component
 @ConditionalOnProperty(name = "app.payments.consumer.enabled", havingValue = "true", matchIfMissing = true)
@@ -41,27 +45,36 @@ public class PaymentEventsConsumer {
         topics = "${app.payments.topic:payment-events}",
         groupId = "${app.payments.consumer.group:wallet-service}")
     public void onMessage(String payload) {
+        CapturedPayment cmd = parse(payload);
+        if (cmd == null) {
+            return;
+        }
+        applyPaymentService.applyCapturedTopup(cmd);
+    }
+
+    /**
+     * @return the command to apply, or {@code null} if this event type carries no
+     *         money effect. Throws {@link PoisonPaymentEventException} if the
+     *         event cannot be parsed — that is non-retryable, so it dead-letters
+     *         at once rather than blocking the partition.
+     */
+    private CapturedPayment parse(String payload) {
         try {
             JsonNode e = objectMapper.readTree(payload);
             String type = e.path("eventType").asText();
             if (!"PaymentCaptured".equals(type)) {
                 log.debug("ignoring payment event type {}", type);
-                return;
+                return null;
             }
-            CapturedPayment cmd = new CapturedPayment(
+            return new CapturedPayment(
                 UUID.fromString(e.get("paymentId").asText()),
                 UUID.fromString(e.get("walletId").asText()),
                 new BigDecimal(e.get("amount").asText()),
                 e.get("currency").asText(),
                 e.path("scheme").asText(null),
                 e.path("ownerUserId").asText(null));
-            applyPaymentService.applyCapturedTopup(cmd);
-        } catch (RuntimeException e) {
-            log.error("failed to apply payment event; will be redelivered: {}", payload, e);
-            throw e;   // don't commit offset — retry
         } catch (Exception e) {
-            log.error("malformed payment event; will be redelivered: {}", payload, e);
-            throw new RuntimeException(e);
+            throw new PoisonPaymentEventException("malformed payment event: " + payload, e);
         }
     }
 }

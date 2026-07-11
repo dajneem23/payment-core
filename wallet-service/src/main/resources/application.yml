@@ -56,6 +56,8 @@ app:
     consumer:
       enabled: ${PAYMENTS_CONSUMER_ENABLED:true}   # disabled in tests (no broker)
       group: ${PAYMENTS_CONSUMER_GROUP:wallet-service}
+      # Total delivery attempts before routing a failed record to payment-events.DLT.
+      max-attempts: ${PAYMENTS_MAX_ATTEMPTS:3}
   fx-cache-ttl-seconds: 60
 
 # ---- resilience4j: fraud check is an external dependency ----

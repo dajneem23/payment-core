@@ -42,5 +42,8 @@ public abstract class AbstractPostgresIT {
         // Outbox relay publishes to Kafka + uses a Redis ShedLock — both excluded
         // here, so disable the relay; the transfer path still writes outbox rows.
         registry.add("app.outbox.enabled", () -> "false");
+        // Payment consumer needs a Kafka broker (excluded here) — disable it; the
+        // PaymentConsumerIT drives ApplyPaymentService directly instead.
+        registry.add("app.payments.consumer.enabled", () -> "false");
     }
 }
