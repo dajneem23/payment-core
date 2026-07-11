@@ -71,6 +71,19 @@ export interface TransferResult {
   amount: number;
   currency: string;
   createdAt: string;
+  remark?: string;
+}
+
+/** Full transfer detail returned by GET /api/v1/transfers/{id} */
+export interface TransferDetail {
+  transferId: string;
+  status: string;
+  sourceWalletId: string;
+  destWalletId: string;
+  amount: number;
+  currency: string;
+  remark?: string;
+  createdAt: string;
 }
 
 // ── Deposit (matches DepositResponse) ──
@@ -92,10 +105,17 @@ export interface DepositResult {
 // ── FX ──
 
 export interface FxRate {
-  code: string;
-  name: string;
-  bid: number;
-  ask: number;
-  transfer: number;
-  updatedAt: string;
+  currencyCode: string;
+  currencyName?: string | null;
+  buy: string | null;    // numeric string, e.g. "25450.0000"
+  transfer: string | null;
+  sell: string | null;
+  quote: string;
+  asOf: string | null;
+  fetchedAt: string;
+}
+
+/** A single historical snapshot — same shape as FxRate but with a unique id. */
+export interface FxRateSnapshot extends FxRate {
+  id: string;
 }

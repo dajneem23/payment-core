@@ -17,25 +17,32 @@ export function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      // In a real app, we'd have GET /api/v1/wallets (by owner).
-      // For now we store wallet IDs in localStorage after creation.
+      // Fetch all wallets for the authenticated user from the API
+      const data = await walletsApi.listMyWallets();
+      setWallets(data);
+      // Sync localStorage cache
+      localStorage.setItem('vietpay_wallet_ids', JSON.stringify(data.map((w) => w.id)));
+    } catch (err: unknown) {
+      console.error('Dashboard fetchWallets error:', err);
+      // Fallback: try localStorage if API fails
       const stored = localStorage.getItem('vietpay_wallet_ids');
       if (stored) {
-        const ids: string[] = JSON.parse(stored);
-        const results = await Promise.allSettled(ids.map((id) => walletsApi.getWallet(id)));
-        const loaded: Wallet[] = [];
-        const validIds: string[] = [];
-        results.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
-            loaded.push(r.value);
-            validIds.push(ids[i]);
-          }
-        });
-        localStorage.setItem('vietpay_wallet_ids', JSON.stringify(validIds));
-        setWallets(loaded);
+        try {
+          const ids: string[] = JSON.parse(stored);
+          const results = await Promise.allSettled(ids.map((id) => walletsApi.getWallet(id)));
+          const loaded: Wallet[] = [];
+          results.forEach((r, i) => {
+            if (r.status === 'fulfilled') loaded.push(r.value);
+            else console.error(`Failed to fetch wallet ${ids[i].slice(0, 8)}…:`, r.reason);
+          });
+          setWallets(loaded);
+          if (loaded.length === 0) setError('Failed to load wallets from the server.');
+        } catch {
+          setError('Failed to load wallets. Try again.');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load wallets');
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load wallets');
     } finally {
       setLoading(false);
     }
@@ -49,15 +56,16 @@ export function Dashboard() {
     setCreating(true);
     setError('');
     try {
-      const wallet = await walletsApi.createWallet({ currency });
-      const stored = localStorage.getItem('vietpay_wallet_ids');
-      const ids: string[] = stored ? JSON.parse(stored) : [];
-      ids.push(wallet.id);
-      localStorage.setItem('vietpay_wallet_ids', JSON.stringify(ids));
-      setWallets((prev) => [...prev, wallet]);
+      await walletsApi.createWallet({ currency });
+      // Refresh the full list from the API
+      const data = await walletsApi.listMyWallets();
+      setWallets(data);
+      localStorage.setItem('vietpay_wallet_ids', JSON.stringify(data.map((w) => w.id)));
       setShowCreate(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create wallet');
+      console.error('Dashboard createWallet error:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to create wallet';
+      setError(`Create wallet failed: ${msg}`);
     } finally {
       setCreating(false);
     }
@@ -93,9 +101,7 @@ export function Dashboard() {
                 className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </label>

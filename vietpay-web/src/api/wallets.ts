@@ -6,6 +6,11 @@ import type {
   Reconciliation,
 } from '../types';
 
+export async function listMyWallets(): Promise<Wallet[]> {
+  const { data } = await apiClient.get<Wallet[]>('/api/v1/wallets');
+  return data;
+}
+
 export async function createWallet(req: CreateWalletRequest): Promise<Wallet> {
   const { data } = await apiClient.post<Wallet>('/api/v1/wallets', req);
   return data;

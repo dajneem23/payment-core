@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as walletsApi from '../api/wallets';
-import type { Wallet, Transaction, Reconciliation } from '../types';
+import * as transfersApi from '../api/transfers';
+import type { Wallet, Transaction, Reconciliation, TransferDetail } from '../types';
+
+function txnIcon(direction: string) {
+  return direction === 'CREDIT' ? '↓' : '↑';
+}
+
+function txnLabel(direction: string) {
+  return direction === 'CREDIT' ? 'Received' : 'Sent';
+}
 
 export function WalletDetail() {
   const { id } = useParams<{ id: string }>();
@@ -12,25 +21,40 @@ export function WalletDetail() {
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [detail, setDetail] = useState<TransferDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const LIMIT = 20;
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     setError('');
-    Promise.all([
+    Promise.allSettled([
       walletsApi.getWallet(id),
       walletsApi.getTransactions(id, LIMIT, 0),
-      walletsApi.getReconciliation(id).catch(() => null),
+      walletsApi.getReconciliation(id),
     ])
-      .then(([w, t, r]) => {
-        setWallet(w);
-        setTxns(t);
-        setRecon(r);
-        setHasMore(t.length === LIMIT);
+      .then(([wR, tR, rR]) => {
+        if (wR.status === 'fulfilled') {
+          setWallet(wR.value);
+        } else {
+          console.error('Failed to load wallet:', wR.reason);
+          setError('Failed to load wallet');
+        }
+        if (tR.status === 'fulfilled') {
+          setTxns(tR.value);
+          setHasMore(tR.value.length === LIMIT);
+        } else {
+          console.error('Failed to load transactions:', tR.reason);
+        }
+        if (rR.status === 'fulfilled') {
+          setRecon(rR.value);
+        } else {
+          console.error('Failed to load reconciliation:', rR.reason);
+        }
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load wallet');
+        console.error('WalletDetail error:', err);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -48,6 +72,19 @@ export function WalletDetail() {
     }
   };
 
+  const openDetail = async (sourceRef: string) => {
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const d = await transfersApi.getTransferDetail(sourceRef);
+      setDetail(d);
+    } catch (err: unknown) {
+      console.error('Failed to load transfer detail:', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   if (loading) {
     return <p className="text-gray-500 text-sm">Loading wallet…</p>;
   }
@@ -61,7 +98,6 @@ export function WalletDetail() {
   }
 
   const diff = recon ? recon.cachedBalance - recon.ledgerBalance : 0;
-  const statusColor = recon?.balanced ? 'text-green-600' : 'text-red-600';
 
   return (
     <div>
@@ -72,23 +108,90 @@ export function WalletDetail() {
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
               {wallet.currency} Balance
             </div>
-            <div className="text-3xl font-bold">
-              {wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <div className="text-3xl font-bold tracking-tight">
+              {wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}{' '}
+              <span className="text-lg font-normal text-gray-400">{wallet.currency}</span>
             </div>
             <div className="text-xs text-gray-400 mt-1 font-mono">{wallet.id}</div>
           </div>
           {recon && (
-            <div className={`text-sm font-medium ${statusColor}`}>
-              {recon.balanced ? '✓ In sync' : '⚠ Out of sync'}
-              {!recon.balanced && (
-                <span className="block text-xs text-red-500">
-                  Diff: {diff.toFixed(2)}
+            <div className={`text-sm font-medium ${recon.balanced ? 'text-green-600' : 'text-red-600'}`}>
+              {recon.balanced ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                  In sync
                 </span>
+              ) : (
+                <div>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+                    Out of sync
+                  </span>
+                  <span className="block text-xs text-red-500 mt-0.5">
+                    Diff: {diff.toFixed(2)}
+                  </span>
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Transfer detail panel */}
+      {detailLoading && (
+        <div className="mb-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-400">
+          Loading transfer details…
+        </div>
+      )}
+      {detail && (
+        <div className="mb-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <h3 className="text-sm font-semibold">Transfer Detail</h3>
+            <button
+              onClick={() => setDetail(null)}
+              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-gray-400">Transfer ID</div>
+              <div className="font-mono text-xs">{detail.transferId}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Status</div>
+              <span className="inline-block text-xs font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                {detail.status}
+              </span>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Source Wallet</div>
+              <div className="font-mono text-xs">{detail.sourceWalletId}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Destination Wallet</div>
+              <div className="font-mono text-xs">{detail.destWalletId}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Amount</div>
+              <div className="font-mono font-semibold">
+                {detail.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} {detail.currency}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Date</div>
+              <div className="text-xs">{new Date(detail.createdAt).toLocaleString()}</div>
+            </div>
+            {detail.remark && (
+              <div className="col-span-2">
+                <div className="text-xs text-gray-400">Remark</div>
+                <div className="text-sm text-gray-700">{detail.remark}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Transactions */}
       <h2 className="text-lg font-semibold mb-3">Transactions</h2>
@@ -96,52 +199,49 @@ export function WalletDetail() {
         <p className="text-gray-400 text-sm py-4">No transactions yet</p>
       ) : (
         <>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">ID</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">Direction</th>
-                  <th className="text-right px-4 py-2 font-medium text-gray-500">Amount</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-500">Source Ref</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {txns.map((t) => {
-                  const isCredit = t.direction === 'CREDIT';
-                  return (
-                    <tr key={t.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-gray-500 font-mono text-xs truncate max-w-32">
-                        {t.id.slice(0, 8)}…
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`text-xs font-medium px-1.5 py-0.5 rounded ${
-                            isCredit
-                              ? 'bg-green-50 text-green-700'
-                              : 'bg-red-50 text-red-700'
-                          }`}
-                        >
-                          {t.direction}
-                        </span>
-                      </td>
-                      <td
-                        className={`px-4 py-2 text-right font-mono ${
-                          isCredit ? 'text-green-600' : 'text-red-600'
-                        }`}
-                      >
-                        {isCredit ? '+' : '-'}
-                        {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}{' '}
-                        {t.currency}
-                      </td>
-                      <td className="px-4 py-2 text-gray-500 font-mono text-xs truncate max-w-48">
-                        {t.sourceRef ? t.sourceRef.slice(0, 8) + '…' : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+            {txns.map((t) => {
+              const isCredit = t.direction === 'CREDIT';
+              const isActive = detail?.transferId === t.sourceRef;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => openDetail(t.sourceRef)}
+                  className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                    isActive ? 'bg-blue-50 ring-1 ring-blue-200' : ''
+                  }`}
+                >
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                      isCredit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {txnIcon(t.direction)}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900">
+                      {txnLabel(t.direction)}
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono truncate">
+                      {t.id.slice(0, 8)}… &middot; ref {t.sourceRef.slice(0, 8)}…
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div
+                      className={`text-sm font-semibold font-mono ${
+                        isCredit ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {isCredit ? '+' : '-'}
+                      {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-xs text-gray-400">{t.currency}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           {hasMore && (
             <button

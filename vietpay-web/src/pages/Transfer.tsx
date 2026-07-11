@@ -15,27 +15,16 @@ export function Transfer() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem('vietpay_wallet_ids');
-    if (stored) {
-      const ids: string[] = JSON.parse(stored);
-      Promise.allSettled(ids.map((id) => walletsApi.getWallet(id)))
-        .then((results) => {
-          const loaded: Wallet[] = [];
-          const validIds: string[] = [];
-          results.forEach((r, i) => {
-            if (r.status === 'fulfilled') {
-              loaded.push(r.value);
-              validIds.push(ids[i]);
-            }
-          });
-          localStorage.setItem('vietpay_wallet_ids', JSON.stringify(validIds));
-          setWallets(loaded);
-          if (loaded.length > 0) setSourceId(loaded[0].id);
-        })
-        .finally(() => setLoadingWallets(false));
-    } else {
-      setLoadingWallets(false);
-    }
+    walletsApi.listMyWallets()
+      .then((data) => {
+        setWallets(data);
+        if (data.length > 0) setSourceId(data[0].id);
+        localStorage.setItem('vietpay_wallet_ids', JSON.stringify(data.map((w) => w.id)));
+      })
+      .catch((err: unknown) => {
+        console.error('Transfer fetchWallets error:', err);
+      })
+      .finally(() => setLoadingWallets(false));
   }, []);
 
   const sourceWallet = wallets.find((w) => w.id === sourceId);
@@ -69,8 +58,17 @@ export function Transfer() {
       });
       setResult(res);
       setAmount('');
+      // Refresh wallet balances after transfer
+      walletsApi.listMyWallets()
+        .then((data) => {
+          setWallets(data);
+          localStorage.setItem('vietpay_wallet_ids', JSON.stringify(data.map((w) => w.id)));
+        })
+        .catch(() => {});
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Transfer failed');
+      console.error('Transfer error:', err);
+      const msg = err instanceof Error ? err.message : 'Transfer failed. Check that both wallets exist and the source has sufficient balance.';
+      setError(msg);
     } finally {
       setSending(false);
     }
@@ -84,7 +82,9 @@ export function Transfer() {
     return (
       <div className="text-center py-16 text-gray-400">
         <p className="text-lg mb-1">No wallets to transfer from</p>
-        <p className="text-sm">Create a wallet first</p>
+        <p className="text-sm">
+          <a href="/" className="text-blue-600 hover:underline">Create a wallet</a> first
+        </p>
       </div>
     );
   }
@@ -122,7 +122,7 @@ export function Transfer() {
           >
             {wallets.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.id.slice(0, 8)}… — {w.balance.toFixed(2)} {w.currency}
+                {w.id.slice(0, 8)}… — {w.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })} {w.currency}
               </option>
             ))}
           </select>

@@ -10,6 +10,7 @@ import { WalletDetail } from './pages/WalletDetail';
 import { Transfer } from './pages/Transfer';
 import { FxRates } from './pages/FxRates';
 import { Deposit } from './pages/admin/Deposit';
+import { CardDeposit } from './pages/CardDeposit';
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/wallets/:id" element={<WalletDetail />} />
             <Route path="/transfer" element={<Transfer />} />
             <Route path="/fx-rates" element={<FxRates />} />
+            <Route path="/deposit" element={<CardDeposit />} />
             <Route
               path="/admin/deposit"
               element={

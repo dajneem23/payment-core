@@ -20,6 +20,11 @@ export async function logout(): Promise<void> {
   await apiClient.post('/auth/logout');
 }
 
+export async function iam(): Promise<{ sub: string; email: string; role: string }> {
+  const { data } = await apiClient.get<{ sub: string; email: string; role: string }>('/auth/iam');
+  return data;
+}
+
 export async function verify(): Promise<{ sub: string; role: string }> {
   const { data } = await apiClient.get('/auth/verify');
   return data;

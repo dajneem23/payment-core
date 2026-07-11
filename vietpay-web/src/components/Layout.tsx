@@ -29,6 +29,9 @@ export function Layout() {
               <Link to="/fx-rates" className="hover:text-gray-900 transition-colors">
                 FX Rates
               </Link>
+              <Link to="/deposit" className="hover:text-gray-900 transition-colors">
+                Card Deposit
+              </Link>
               {isAdmin && (
                 <Link to="/admin/deposit" className="hover:text-gray-900 transition-colors">
                   Deposit
