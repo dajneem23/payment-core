@@ -43,10 +43,18 @@ http:
 
     # Wallet API — protected: validate JWT via ForwardAuth, strip spoofed header.
     wallet:
-      rule: "PathPrefix(`/api/v1`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/actuator`)"
+      rule: "PathPrefix(`/api/v1`) || PathPrefix(`/actuator`)"
       entryPoints: [web]
       service: wallet
       middlewares: [strip-inbound-headers, forward-auth]
+
+    # OpenAPI / Swagger UI — PUBLIC (API documentation), no ForwardAuth. Serves
+    # the wallet-service springdoc UI + spec so `docker compose up` + a browser
+    # can read the API without a token.
+    docs:
+      rule: "PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
+      entryPoints: [web]
+      service: wallet
 
     # Payments API (card top-up) — protected like the wallet API. A user tops up
     # their OWN wallet, so the JWT identity (X-User-Id) is required. Acquirer
@@ -57,6 +65,18 @@ http:
       entryPoints: [web]
       service: payments
       middlewares: [strip-inbound-headers, forward-auth]
+
+    # Observability UIs (only up under `--profile observability`). Grafana is
+    # configured to serve from the /grafana sub-path; Prometheus from /prometheus
+    # (see its --web.route-prefix). Anonymous access in dev — no ForwardAuth.
+    grafana:
+      rule: "PathPrefix(`/grafana`)"
+      entryPoints: [web]
+      service: grafana
+    prometheus:
+      rule: "PathPrefix(`/prometheus`)"
+      entryPoints: [web]
+      service: prometheus
 
   services:
     # Dummy service referenced by the deny-internal router — never actually
@@ -89,6 +109,14 @@ http:
       loadBalancer:
         servers:
           - url: "http://payment-gateway:3005"
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: "http://prometheus:9090"
 
   middlewares:
     # Traefik calls user-service /auth/verify; on 200 it copies X-User-Id onto
