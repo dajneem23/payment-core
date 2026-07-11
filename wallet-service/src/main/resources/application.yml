@@ -31,6 +31,12 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       # outbox payloads are already JSON strings, so publish them verbatim
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      # consumes payment-events from the payment-gateway; payloads are JSON strings
+      group-id: ${PAYMENTS_CONSUMER_GROUP:wallet-service}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 server:
   port: 8080
@@ -45,6 +51,11 @@ app:
     enabled: ${OUTBOX_ENABLED:true}         # disabled in tests (no broker)
     topic: transfer-events
     poll-delay-ms: 1000
+  payments:
+    topic: ${PAYMENTS_TOPIC:payment-events}
+    consumer:
+      enabled: ${PAYMENTS_CONSUMER_ENABLED:true}   # disabled in tests (no broker)
+      group: ${PAYMENTS_CONSUMER_GROUP:wallet-service}
   fx-cache-ttl-seconds: 60
 
 # ---- resilience4j: fraud check is an external dependency ----

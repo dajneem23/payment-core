@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { ConfigService } from '../../shared/services/config.service';
 import { LoggerService } from '../../shared/services/logger.service';
@@ -168,12 +168,12 @@ export class PaymentsService {
 
                 // Insert outbox event
                 const outboxRepo = runner.manager.getRepository(OutboxEvent);
-                await outboxRepo.insert({
+                const outboxEvent = outboxRepo.create({
                     aggregateType: 'Payment',
                     aggregateId: payment.id,
                     eventType: 'PaymentCaptured',
                     payload: {
-                        eventId: uuidv4(),
+                        eventId: randomUUID(),
                         eventType: 'PaymentCaptured',
                         paymentId: payment.id,
                         walletId: payment.walletId,
@@ -184,6 +184,7 @@ export class PaymentsService {
                         occurredAt: new Date().toISOString(),
                     },
                 });
+                await outboxRepo.save(outboxEvent);
             } else if (dto.status === 'FAILED') {
                 payment.status = PaymentStatus.FAILED;
                 await paymentRepo.save(payment);

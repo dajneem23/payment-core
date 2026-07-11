@@ -10,11 +10,11 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 import { AcquirerClient } from './acquirer.client';
+import type { SettlementWebhookDto } from './dtos/webhook.dto';
 import { TopupDto } from './dtos/topup.dto';
-import { SettlementWebhookDto } from './dtos/webhook.dto';
 import { verifySignature } from './hmac.util';
 import { PaymentsService } from './payments.service';
 
