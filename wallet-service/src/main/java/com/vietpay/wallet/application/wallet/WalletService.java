@@ -56,6 +56,14 @@ public class WalletService {
         return WalletView.of(wallet);
     }
 
+    /** All wallets belonging to a user. */
+    @Transactional(readOnly = true)
+    public List<WalletView> listByOwner(String ownerUserId) {
+        return wallets.findByOwner(ownerUserId).stream()
+            .map(WalletView::of)
+            .toList();
+    }
+
     /**
      * Fetch a wallet's balance view (with caching).
      */

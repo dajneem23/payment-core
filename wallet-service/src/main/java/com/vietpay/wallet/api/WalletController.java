@@ -38,6 +38,15 @@ public class WalletController {
         this.depositService = depositService;
     }
 
+    /** List all wallets belonging to the authenticated user. */
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    public List<WalletResponse> list(@RequestHeader("X-User-Id") String userId) {
+        return walletService.listByOwner(userId).stream()
+            .map(WalletResponse::from)
+            .toList();
+    }
+
     @PostMapping
     public ResponseEntity<WalletResponse> create(
             @RequestHeader("X-User-Id") String userId,

@@ -20,4 +20,6 @@ interface SpringDataWalletRepository extends JpaRepository<WalletJpaEntity, UUID
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from WalletJpaEntity w where w.id in :ids order by w.id")
     List<WalletJpaEntity> lockAllByIdInOrder(@Param("ids") List<UUID> ids);
+
+    List<WalletJpaEntity> findByOwnerUserId(UUID ownerUserId);
 }

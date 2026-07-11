@@ -32,6 +32,19 @@ public class WalletsJpaAdapter implements Wallets {
     }
 
     @Override
+    public List<Wallet> findByOwner(String ownerUserId) {
+        UUID ownerUuid;
+        try {
+            ownerUuid = UUID.fromString(ownerUserId);
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+        return repository.findByOwnerUserId(ownerUuid).stream()
+            .map(WalletMapper::toDomain)
+            .toList();
+    }
+
+    @Override
     public List<Wallet> lockForUpdate(List<WalletId> ids) {
         // Sort here so opposing transfers always lock in the same order — the
         // deadlock-safety invariant lives in the adapter, per the port contract.

@@ -19,6 +19,9 @@ public interface Wallets {
      *  transaction opens. */
     Optional<Wallet> findById(WalletId id);
 
+    /** All wallets owned by a given user (read-only, no lock). */
+    List<Wallet> findByOwner(String ownerUserId);
+
     /**
      * Load wallets with a pessimistic write lock ({@code SELECT ... FOR UPDATE}).
      * Concurrent transfers touching the same wallet serialise here, so the
