@@ -5,6 +5,7 @@ import {
     IsArray,
     ArrayMinSize,
     IsNumber,
+    MaxLength,
     Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -119,6 +120,15 @@ export class PaymentEmailDto {
     })
     @IsString()
     timestamp!: string;
+
+    @ApiProperty({
+        description: 'Optional free-text note from the sender (e.g. "Rent for July")',
+        example: 'Rent for July',
+        required: false,
+    })
+    @IsOptional()
+    @MaxLength(500)
+    remark?: string;
 }
 
 // ── OTP ───────────────────────────────────────────────────────────────────

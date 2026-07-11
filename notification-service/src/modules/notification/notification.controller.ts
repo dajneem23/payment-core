@@ -50,7 +50,21 @@ export class NotificationController {
     async sendPaymentEmail(
         @Body() dto: PaymentEmailDto,
     ): Promise<SendEmailResponseDto> {
-        return this.notificationService.sendPaymentEmail(dto);
+        return this.notificationService.sendDebitEmail(dto);
+    }
+
+    @Post('transfer/credit')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Send a credit (received-money) email — test aid' })
+    @ApiResponse({
+        status: HttpStatus.OK,
+        description: 'Credit email sent',
+        type: SendEmailResponseDto,
+    })
+    async sendCreditEmail(
+        @Body() dto: PaymentEmailDto,
+    ): Promise<SendEmailResponseDto> {
+        return this.notificationService.sendCreditEmail(dto);
     }
 
     @Post('welcome')

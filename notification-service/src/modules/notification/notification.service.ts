@@ -62,9 +62,10 @@ export class NotificationService {
         }
     }
 
-    // ── Payment confirmation ─────────────────────────────────────────────
+    // ── Transfer emails ───────────────────────────────────────────────────
 
-    async sendPaymentEmail(dto: PaymentEmailDto): Promise<IEmailResult> {
+    /** Debit receipt — sent to the sender: "You sent X to Y". */
+    async sendDebitEmail(dto: PaymentEmailDto): Promise<IEmailResult> {
         const { html, text } = renderPaymentEmail({
             customerName: dto.customerName,
             transferId: dto.transferId,
@@ -73,13 +74,37 @@ export class NotificationService {
             status: dto.status,
             sourceWalletId: dto.sourceWalletId,
             targetWalletId: dto.targetWalletId,
+            remark: dto.remark,
             timestamp: dto.timestamp,
             supportEmail: this.supportEmail,
         });
 
         return this.sendEmail({
             to: [dto.to],
-            subject: `Transfer ${dto.transferId} — ${dto.status.toUpperCase()}`,
+            subject: `You sent ${dto.amount} ${dto.currency} — ${dto.transferId}`,
+            html,
+            text,
+        });
+    }
+
+    /** Credit notification — sent to the receiver: "You received X from Y". */
+    async sendCreditEmail(dto: PaymentEmailDto): Promise<IEmailResult> {
+        const { html, text } = renderPaymentEmail({
+            customerName: dto.customerName,
+            transferId: dto.transferId,
+            amount: dto.amount,
+            currency: dto.currency,
+            status: dto.status,
+            sourceWalletId: dto.sourceWalletId,
+            targetWalletId: dto.targetWalletId,
+            remark: dto.remark,
+            timestamp: dto.timestamp,
+            supportEmail: this.supportEmail,
+        });
+
+        return this.sendEmail({
+            to: [dto.to],
+            subject: `You received ${dto.amount} ${dto.currency} — ${dto.transferId}`,
             html,
             text,
         });

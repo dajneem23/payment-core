@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ### ── Payment confirmation ─────────────────────────────────────────────
 
-### Send a payment confirmation email
+### Send a debit receipt email (money sent) — "You sent X to Y"
 POST {{baseUrl}}/notifications/payment
 Content-Type: application/json
 
@@ -54,8 +54,29 @@ Content-Type: application/json
   "status": "completed",
   "sourceWalletId": "wal_a1b2c3d4",
   "targetWalletId": "wal_e5f6g7h8",
+  "remark": "Rent for July",
   "timestamp": "2026-07-10T08:30:00Z"
 }
+
+### Send a credit notification email (money received) — "You received X from Y"
+POST {{baseUrl}}/notifications/transfer/credit
+Content-Type: application/json
+
+{
+  "to": "{{email}}",
+  "customerName": "Bob",
+  "transferId": "txn_01J3K4N5P6",
+  "amount": "150.00",
+  "currency": "USD",
+  "status": "completed",
+  "sourceWalletId": "wal_a1b2c3d4",
+  "targetWalletId": "wal_e5f6g7h8",
+  "remark": "Rent for July",
+  "timestamp": "2026-07-10T08:30:00Z"
+}
+
+### /internal is blocked at the edge (502/418 — routed to noop, not exposed)
+GET {{baseUrl}}/internal/users/00000000-0000-0000-0000-000000000099
 
 ### ── OTP ─────────────────────────────────────────────────────────────
 
@@ -115,3 +136,14 @@ Content-Type: application/json
     { "topic": "user-events", "partition": 0, "offset": "2" }
   ]
 }
+### Seek transfer-events partition 0 to offset 0 (full replay)
+
+POST {{directUrl}}/internal/kafka/seek
+Content-Type: application/json
+
+{
+  "entries": [
+    { "topic": "transfer-events", "partition": 0, "offset": "earliest" }
+  ]
+}
+

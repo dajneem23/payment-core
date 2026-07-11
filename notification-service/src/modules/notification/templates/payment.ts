@@ -13,6 +13,7 @@ export interface PaymentTemplateVars {
     status: string;
     sourceWalletId: string;
     targetWalletId: string;
+    remark?: string;
     timestamp: string;
     supportEmail: string;
 }
@@ -29,6 +30,7 @@ export function renderPaymentEmail(vars: PaymentTemplateVars): {
         `Amount: ${vars.amount} ${vars.currency}`,
         `From:  ${vars.sourceWalletId}`,
         `To:    ${vars.targetWalletId}`,
+        ...(vars.remark ? [`Note:  ${vars.remark}`] : []),
         `Date:  ${vars.timestamp}`,
         '',
         `Questions? Contact ${vars.supportEmail}`,
@@ -70,6 +72,8 @@ export function renderPaymentEmail(vars: PaymentTemplateVars): {
                 <tr><td style="padding:0 16px 8px;font-size:14px;color:#18181b;font-family:monospace;">${vars.sourceWalletId}</td></tr>
                 <tr><td style="padding:8px 16px;font-size:13px;color:#71717a;">To</td></tr>
                 <tr><td style="padding:0 16px 8px;font-size:14px;color:#18181b;font-family:monospace;">${vars.targetWalletId}</td></tr>
+                ${vars.remark ? `<tr><td style="padding:8px 16px;font-size:13px;color:#71717a;">Note</td></tr>
+                <tr><td style="padding:0 16px 8px;font-size:14px;color:#18181b;">${vars.remark}</td></tr>` : ''}
                 <tr><td style="padding:8px 16px;font-size:13px;color:#71717a;">Date</td></tr>
                 <tr><td style="padding:0 16px 16px;font-size:14px;color:#18181b;">${vars.timestamp}</td></tr>
               </table>

@@ -147,6 +147,8 @@ services:
     build: ./notification-service
     env_file:
       - ./infra/docker/notification-service.env
+    volumes:
+      - ./keys:/app/keys:ro
     depends_on:
       kafka: { condition: service_healthy }
     labels:

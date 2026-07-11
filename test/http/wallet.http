@@ -3,7 +3,7 @@
 ### {{login.response.body.accessToken}}. (IntelliJ: use ...body.$.accessToken)
 
 @baseUrl = http://localhost
-@email = dajneem235@yopmail.com
+@email = dajneem234@yopmail.com
 @password = Password123!
 @adminEmail = admin@vietpay.com
 @adminPassword = Admin123!
@@ -44,9 +44,10 @@ Content-Type: application/json
 }
 
 ### Deposit $100 into the wallet (ADMIN-only; safe to retry via Idempotency-Key) -> 201
-POST {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}/deposits
+# POST {{baseUrl}}/api/v1/wallets/{{createWallet.response.body.id}}/deposits
+POST {{baseUrl}}/api/v1/wallets/b9f4ab7c-2bb1-4e19-935e-a2de4f477265/deposits
 Authorization: Bearer {{adminLogin.response.body.accessToken}}
-Idempotency-Key: dep-21111111-1111-1111-1111-111111111111
+Idempotency-Key: dep-53111111-1111-1111-1111-111111111111
 Content-Type: application/json
 
 {

@@ -5,7 +5,7 @@
 ### IntelliJ HTTP Client: use {{login.response.body.$.accessToken}} instead.
 
 @baseUrl = http://localhost
-@email = dajneem235@yopmail.com
+@email = dajneem234@yopmail.com
 @password = Password123!
 
 ### Register a new user -> 201, returns access + refresh tokens

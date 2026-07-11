@@ -1,9 +1,21 @@
-# Traefik dynamic configuration (file provider). Declares the routing that used
-# to live in Docker labels. Services are reached by their compose DNS names;
-# OrbStack/Docker embedded DNS load-balances across replicas of each name.
+# Traefik dynamic configuration (file provider).
+#
+# Service-to-service calls (e.g. notification → user-service /internal/**)
+# go directly over the compose network and are never routed through Traefik.
+# Only the public-facing paths below are reachable from the host.
 
 http:
   routers:
+    # Explicitly block /internal — prevents accidental exposure if a broader
+    # PathPrefix rule is added later. Returns 403, not 404, to make the intent
+    # clear (this is a security boundary, not a missing page).
+    deny-internal:
+      rule: "PathPrefix(`/internal`)"
+      entryPoints: [web]
+      service: noop@internal
+      priority: 999    # override any catch-all — routes to noop (502), not exposed
+
+  # Core application routers
     # SPA catch-all — serves the VietPay web UI. Lowest priority so the more
     # specific PathPrefix rules below (auth, api, fx) win for API routes.
     web:
@@ -37,6 +49,12 @@ http:
       middlewares: [strip-inbound-headers, forward-auth]
 
   services:
+    # Dummy service referenced by the deny-internal router — never actually
+    # called (the deny-403 middleware short-circuits before routing).
+    noop:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:1"
     web:
       loadBalancer:
         servers:

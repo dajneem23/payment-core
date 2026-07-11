@@ -1,14 +1,21 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { readFileSync } from 'fs';
+import { sign } from 'jsonwebtoken';
 import { Kafka, Consumer } from 'kafkajs';
+import { randomUUID } from 'crypto';
 
 import { ConfigService } from '../../shared/services/config.service';
 import { trackKafkaMessage } from '../../shared/telemetry/metrics';
+import { PaymentEmailDto } from './dtos/send-email.dto';
 import { NotificationService } from './notification.service';
 
 interface TransferEvent {
     transferId: string;
     sourceWalletId: string;
     destWalletId: string;       // domain term — consistent with the Transfer aggregate
+    sourceUserId: string;
+    destUserId: string;
+    remark?: string;
     amount: string;
     currency: string;
     status: string;
@@ -42,6 +49,8 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     private consumer: Consumer;
     private groupId: string;
     private subscribedTopics: string[] = [];
+    private userServiceUrl: string;
+    private servicePrivateKey: string;
 
     constructor(
         private readonly configService: ConfigService,
@@ -57,6 +66,15 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
             groupId: this.groupId,
             allowAutoTopicCreation: true,
         });
+        this.userServiceUrl = configService.get('USER_SERVICE_URL') || 'http://user-service:3004';
+        try {
+            this.servicePrivateKey = readFileSync(
+                configService.get('SERVICE_JWT_PRIVATE_KEY') || '/app/keys/service-auth-private.pem',
+                'utf8',
+            );
+        } catch {
+            this.servicePrivateKey = '';   // missing key → user lookup fails gracefully
+        }
     }
 
     // ── Lifecycle ───────────────────────────────────────────────────────
@@ -157,9 +175,90 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
     // ── Handlers ────────────────────────────────────────────────────────
 
     private async handleTransfer(event: TransferEvent) {
-        this.logger.log(
-            `Transfer event: ${event.transferId} — ${event.amount} ${event.currency} — status=${event.status}`,
-        );
+        try {
+            this.logger.log(
+                `Transfer event: ${event.transferId} — ${event.amount} ${event.currency}`,
+            );
+
+            const [ sourceUser, destUser ] = await Promise.allSettled([
+                ...(event.sourceUserId && [ this.lookupEmail(event.sourceUserId) ] || []),
+                ...(event.destUserId && [ this.lookupEmail(event.destUserId) ] || []),
+            ]);
+
+
+            const base: Omit<PaymentEmailDto, 'to' | 'customerName'> = {
+                transferId: event.transferId,
+                amount: event.amount,
+                currency: event.currency,
+                status: event.status,
+                sourceWalletId: event.sourceWalletId,
+                targetWalletId: event.destWalletId,
+                remark: event.remark,
+                timestamp: event.timestamp,
+            };
+            if (sourceUser?.status === 'fulfilled' && sourceUser.value) {
+                // Debit receipt — to the sender.
+                await this.notificationService.sendDebitEmail({
+                    ...base,
+                    to: sourceUser.value.email,
+                    customerName: [ sourceUser.value.firstName, sourceUser.value.lastName ].filter(Boolean).join(' ') || sourceUser.value.email.split('@')[ 0 ],
+                });
+            } else {
+                this.logger.warn(`Source user not found for transfer ${event.transferId} (userId=${event.sourceUserId})`);
+            }
+
+            if (destUser?.status === 'fulfilled' && destUser.value) {
+                // Credit notification — to the receiver.
+                await this.notificationService.sendCreditEmail({
+                    ...base,
+                    to: destUser.value.email,
+                    customerName: [ destUser.value.firstName, destUser.value.lastName ].filter(Boolean).join(' ') || destUser.value.email.split('@')[ 0 ],
+                });
+            } else {
+                this.logger.warn(`Destination user not found for transfer ${event.transferId} (userId=${event.destUserId})`);
+            }
+
+        } catch (error: any) {
+            this.logger.error(
+                `Failed to handle transfer event ${event.transferId}: ${error.message}`,
+                error.stack,
+            );
+            throw error; // rethrow so the message is not committed and can be retried
+        }
+    }
+
+    /** Sign a short-lived EC service JWT and call GET /internal/users/:id. */
+    private async lookupEmail(userId: string): Promise<{ email: string; firstName?: string; lastName?: string } | null> {
+        if (!this.servicePrivateKey) {
+            this.logger.warn('service private key not loaded — user lookup disabled');
+            return null;
+        }
+        try {
+            //cache jwt for next time
+            const assertion = sign(
+                { aud: 'vietpay-internal' },
+                this.servicePrivateKey,
+                {
+                    algorithm: 'ES256',
+                    issuer: 'notification-service',
+                    subject: 'notification-service',
+                    jwtid: randomUUID(),
+                    expiresIn: 60,
+                },
+            );
+            const res = await fetch(`${this.userServiceUrl}/internal/users/${userId}`, {
+                headers: { Authorization: `Bearer ${assertion}` },
+            });
+            if (!res.ok) {
+                this.logger.warn(`user lookup returned ${res.status} for ${userId}`);
+                throw new Error(`user lookup failed: ${res.status} ${res.statusText}`);
+            }
+            const user = await res.json() as any;
+            return { email: user.email, firstName: user.firstName, lastName: user.lastName };
+        } catch (e: any) {
+            this.logger.error(`user lookup failed for ${userId}: ${e.message}`);
+            throw e;
+        }
     }
 
     private async handleUserEvent(event: UserEvent) {
