@@ -2,6 +2,7 @@ package com.vietpay.wallet.application.payment;
 
 import com.vietpay.wallet.application.wallet.WalletService;
 import com.vietpay.wallet.domain.exception.ValidationException;
+import com.vietpay.wallet.domain.exception.WalletCurrencyNotSupportedException;
 import com.vietpay.wallet.domain.exception.WalletNotFoundException;
 import com.vietpay.wallet.domain.ledger.Ledger;
 import com.vietpay.wallet.domain.ledger.LedgerEntry;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.List;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,9 +43,12 @@ public class ApplyPaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(ApplyPaymentService.class);
 
-    /** SYSTEM card-clearing account seeded in V3 (external counter-account). */
-    private static final WalletId CARD_CLEARING =
-        WalletId.of(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+    /** SYSTEM card-clearing accounts for card top-ups, one per currency. */
+    private static final Map<String, WalletId> CARD_CLEARING = Map.of(
+        "USD", WalletId.of(UUID.fromString("00000000-0000-0000-0000-000000000001")),
+        "EUR", WalletId.of(UUID.fromString("00000000-0000-0000-0000-000000000002")),
+        "VND", WalletId.of(UUID.fromString("00000000-0000-0000-0000-000000000003")),
+        "GBP", WalletId.of(UUID.fromString("00000000-0000-0000-0000-000000000004")));
 
     private final Wallets wallets;
     private final Ledger ledger;
@@ -84,13 +89,21 @@ public class ApplyPaymentService {
             return false;
         }
 
+        WalletId clearingId = CARD_CLEARING.get(cmd.currency());
+        if (clearingId == null) {
+            throw new WalletCurrencyNotSupportedException(cmd.currency());
+        }
+            throw new ValidationException("unsupported card currency: " + cmd.currency());
+        }
+
         Map<WalletId, Wallet> locked = wallets
-            .lockForUpdate(List.of(CARD_CLEARING, WalletId.of(cmd.walletId()))).stream()
+            .lockForUpdate(List.of(clearingId, WalletId.of(cmd.walletId()))).stream()
             .collect(Collectors.toMap(Wallet::id, Function.identity()));
-        Wallet clearing = locked.get(CARD_CLEARING);
+        Wallet clearing = locked.get(clearingId);
         Wallet wallet = locked.get(WalletId.of(cmd.walletId()));
         if (clearing == null) {
-            throw new IllegalStateException("card_clearing account missing — database not seeded?");
+            throw new IllegalStateException("card_clearing account missing for " + cmd.currency()
+                + " — database not seeded?");
         }
         if (wallet == null) {
             throw new WalletNotFoundException(cmd.walletId());

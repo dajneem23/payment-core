@@ -8,7 +8,7 @@ export class TopupDto {
     amount: string;
 
     @IsString()
-    @Length(3, 3)
+    @IsIn(['USD', 'EUR', 'VND', 'GBP'])
     currency: string;
 
     @IsIn(['VISA', 'MASTERCARD'])

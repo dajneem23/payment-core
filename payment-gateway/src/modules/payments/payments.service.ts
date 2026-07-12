@@ -46,7 +46,6 @@ export class PaymentsService {
     }
 
     async topup(dto: TopupDto, ownerUserId: string, idempotencyKey: string) {
-        // 1. Replay detection
         const existing = await this.paymentRepo.findOne({
             where: { idempotencyKey },
         });
