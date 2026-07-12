@@ -4,6 +4,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Empty base URL → API calls are relative (e.g. /api/v1/wallets), hitting the
+# same domain the page was served from. Works behind Traefik / Dokploy / nginx
+# without per-environment config.
+ENV VITE_API_BASE_URL=
 RUN npm run build
 
 # ── Serve stage ──
