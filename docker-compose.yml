@@ -391,3 +391,7 @@ volumes:
   postgres_data:
   grafana_data:
   es_data:
+
+networks:
+  default:
+    name: vietpay
