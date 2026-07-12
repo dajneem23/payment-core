@@ -92,4 +92,34 @@ with the dev overlay (`NODE_ENV=development`). Every service also has
 ### visa-service / mastercard-service — `/acquirer` (internal, no public route)
 - `POST /acquirer/authorize` · `POST /acquirer/capture` — called east-west by the gateway
 
+---
+
+## Testing
+
+**The hard parts** (idempotency + concurrency), on a real Postgres via Testcontainers:
+
+```bash
+cd wallet-service && mvn verify
+```
+- `IdempotencyIT` — same key twice → money moves once, ledger balances.
+- `ConcurrencyIT` — 20 threads on an under-funded wallet → no overdraw, ledger reconciles.
+- `PaymentConsumerIT` / `PaymentEventsConsumerTest` — card top-up applied exactly once + DLQ.
+
+**NestJS unit tests** (gateway HMAC + idempotency, acquirer BIN):
+
+```bash
+cd payment-gateway && npm test        # and: cd acquirer-sim && npm test
+```
+
+**End-to-end** (through the running stack): run `test/http/transfer.http` and
+`test/http/payments.http` top-to-bottom — login → create wallet → deposit →
+transfer / card top-up → check balance & history.
+
+**Load test** (k6, transfers through the full edge → JWT → pessimistic-locked tx):
+
+```bash
+k6 run test/k6/transfer-load.js
+```
+
+
 
