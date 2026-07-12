@@ -8,12 +8,18 @@ NestJS. Everything runs behind Traefik with one `docker compose up`.
 
 ### Live demo: https://payment.sugoiweb3.uk/
 
-**Swagger API docs** (no login needed):
-- Wallet (transfers, deposits, ledger) — https://payment.sugoiweb3.uk/wallet/api/docs
-- Auth (register, login) — https://payment.sugoiweb3.uk/user/api/docs
-- Card top-ups — https://payment.sugoiweb3.uk/payments/api/docs
-- FX rates — https://payment.sugoiweb3.uk/fx/api/docs
-- Notifications — https://payment.sugoiweb3.uk/notifications/api/docs
+- Swagger (wallet-service) — https://payment.sugoiweb3.uk/swagger-ui.html
+- Grafana dashboards — https://payment.sugoiweb3.uk/grafana
+
+### Local dev (with `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`)
+
+- Wallet Swagger — http://localhost:8180/swagger-ui.html
+- User service Swagger — http://localhost:3004/api/docs
+- FX service Swagger — http://localhost:3002/api/docs
+- Payment gateway Swagger — http://localhost:3005/api/docs
+- Notification service Swagger — http://localhost:3003/api/docs
+- Grafana — http://localhost/grafana
+- Traefik dashboard — http://localhost:8888
 
 ---
 
