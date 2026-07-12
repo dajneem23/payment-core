@@ -55,13 +55,6 @@ http:
       rule: "PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
       entryPoints: [web]
       service: wallet
-    swagger-wallet:
-      rule: "PathPrefix(`/wallet/api/docs`)"
-      entryPoints: [web]
-      service: wallet
-      middlewares: [replace-wallet-swagger]
-      priority: 100
-
     # Payments API (card top-up) — protected like the wallet API. A user tops up
     # their OWN wallet, so the JWT identity (X-User-Id) is required. Acquirer
     # settlement webhooks reach the gateway east-west (direct container call),
@@ -71,34 +64,6 @@ http:
       entryPoints: [web]
       service: payments
       middlewares: [strip-inbound-headers, forward-auth]
-
-    # NestJS Swagger UIs — one unique public prefix per service (each exposes its
-    # own Swagger at /api/docs internally; the strip-prefix drops the public path
-    # so the service sees /api/docs). Public, no ForwardAuth.
-    swagger-user:
-      rule: "PathPrefix(`/user/api/docs`)"
-      entryPoints: [web]
-      service: auth
-      middlewares: [strip-user-swagger]
-      priority: 100
-    swagger-fx:
-      rule: "PathPrefix(`/fx/api/docs`)"
-      entryPoints: [web]
-      service: fx
-      middlewares: [strip-fx-swagger]
-      priority: 100
-    swagger-notifications:
-      rule: "PathPrefix(`/notifications/api/docs`)"
-      entryPoints: [web]
-      service: notifications
-      middlewares: [strip-notifications-swagger]
-      priority: 100
-    swagger-payments:
-      rule: "PathPrefix(`/payments/api/docs`)"
-      entryPoints: [web]
-      service: payments
-      middlewares: [strip-payments-swagger]
-      priority: 100
 
     # Observability UIs (only up under `--profile observability`). Grafana is
     # configured to serve from the /grafana sub-path; Prometheus from /prometheus
@@ -170,23 +135,3 @@ http:
           X-User-Id: ""
           X-User-Role: ""
 
-    # wallet-service is springdoc (not NestJS). Rewrite the friendly path to the
-    # real Swagger UI entrypoint.
-    replace-wallet-swagger:
-      replacePath:
-        path: "/swagger-ui.html"
-
-    # Strip the unique Swagger prefix before forwarding to the service, so each
-    # NestJS service sees its own /api/docs.
-    strip-user-swagger:
-      stripPrefix:
-        prefixes: ["/user/api/docs"]
-    strip-fx-swagger:
-      stripPrefix:
-        prefixes: ["/fx/api/docs"]
-    strip-notifications-swagger:
-      stripPrefix:
-        prefixes: ["/notifications/api/docs"]
-    strip-payments-swagger:
-      stripPrefix:
-        prefixes: ["/payments/api/docs"]
