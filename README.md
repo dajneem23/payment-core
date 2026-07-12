@@ -6,6 +6,15 @@ double-charging) and **overdraw-proof** under concurrency. The money core is
 Java/Spring Boot; the satellites (auth, FX, notifications, card gateway) are
 NestJS. Everything runs behind Traefik with one `docker compose up`.
 
+### Live demo: https://payment.sugoiweb3.uk/
+
+**Swagger API docs** (no login needed):
+- Wallet (transfers, deposits, ledger) — https://payment.sugoiweb3.uk/wallet/api/docs
+- Auth (register, login) — https://payment.sugoiweb3.uk/user/api/docs
+- Card top-ups — https://payment.sugoiweb3.uk/payments/api/docs
+- FX rates — https://payment.sugoiweb3.uk/fx/api/docs
+- Notifications — https://payment.sugoiweb3.uk/notifications/api/docs
+
 ---
 
 ## Run it
@@ -120,6 +129,34 @@ transfer / card top-up → check balance & history.
 ```bash
 k6 run test/k6/transfer-load.js
 ```
+
+---
+
+## Status
+
+**Done**
+- scoped:
+  - Safe transfers + admin deposits on an immutable **double-entry ledger**
+  - **DB-level idempotency** (unique key + replay) and **concurrency-proof** overdraw prevention
+  - Schema **migrations** (Flyway / TypeORM) — no auto-create
+  - JWT auth at the Traefik edge (ForwardAuth)
+  - **Card top-up** — gateway → Visa/Mastercard sims → outbox→Kafka → idempotent consumer + **DLQ**
+  - FX rates, email notifications, Redis caching
+  - Prometheus + Grafana dashboards, structured logs, OpenTelemetry traces
+  - Fully **Dockerised** (`docker compose up`)
+- not in scope:
+  - User management (registration, login, profile updates) with greeting email
+  - Admin panel for managing users and transactions
+
+**Known limitations**
+- 1 user can have multiple wallets, that could be confusing — a real system would have a single wallet per user, or a more complex hierarchy.
+- OpenTelemetry enable but not jeager-exported (no Jaeger container, no traces in Grafana)
+
+**With more time**
+- Cross-currency transfers via `fx-service` rates with an exchange feature
+- fees system
+- Card **payout saga** (money out, with compensating reversal)
+- A **fraud-service** with the Resilience4j circuit breaker fully wired
 
 
 

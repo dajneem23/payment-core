@@ -66,7 +66,8 @@ async function bootstrap() {
 
     const configService = app.select(SharedModule).get(ConfigService);
 
-    if (['development', 'staging'].includes(configService.nodeEnv)) {
+    if (['development', 'staging'].includes(configService.nodeEnv)
+        || configService.get('SWAGGER_ENABLED') === 'true') {
         setupSwagger(app, configService.swaggerConfig);
     }
 

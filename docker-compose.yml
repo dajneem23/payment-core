@@ -131,6 +131,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@vietpay.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
       SERVICE_TOKEN: ${SERVICE_TOKEN:-dev-internal-token}
+      SWAGGER_ENABLED: "true"
     volumes:
       # Mount the EC keypair read-only rather than baking the private key into
       # the image. In production this would be a secret / mounted vault path.
@@ -179,6 +180,7 @@ services:
       FX_REFRESH_CRON: "${FX_REFRESH_CRON:-*/5 * * * *}"
       OTEL_SERVICE_NAME: fx-service
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
+      SWAGGER_ENABLED: "true"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -206,6 +208,7 @@ services:
       SERVICE_JWT_PRIVATE_KEY: /app/keys/service-auth-private.pem
       OTEL_SERVICE_NAME: notification-service
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
+      SWAGGER_ENABLED: "true"
     volumes:
       - ./keys:/app/keys:ro
     depends_on:
@@ -244,6 +247,7 @@ services:
       OUTBOX_ENABLED: "true"
       OTEL_SERVICE_NAME: payment-gateway
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
+      SWAGGER_ENABLED: "true"
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy }
