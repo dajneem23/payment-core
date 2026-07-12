@@ -72,7 +72,10 @@ public class ApplyPaymentService {
         try {
             boolean applied = Boolean.TRUE.equals(tx.execute(status -> post(cmd)));
             if (applied) {
-                walletService.evictView(CARD_CLEARING.value());
+                WalletId clearingId = CARD_CLEARING.get(cmd.currency());
+                if (clearingId != null) {
+                    walletService.evictView(clearingId.value());
+                }
                 walletService.evictView(cmd.walletId());
                 log.info("card top-up applied: {} {} -> wallet {}",
                     cmd.amount(), cmd.currency(), cmd.walletId());
@@ -92,8 +95,6 @@ public class ApplyPaymentService {
         WalletId clearingId = CARD_CLEARING.get(cmd.currency());
         if (clearingId == null) {
             throw new WalletCurrencyNotSupportedException(cmd.currency());
-        }
-            throw new ValidationException("unsupported card currency: " + cmd.currency());
         }
 
         Map<WalletId, Wallet> locked = wallets
