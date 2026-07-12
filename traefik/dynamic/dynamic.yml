@@ -173,9 +173,8 @@ http:
     # wallet-service is springdoc (not NestJS). Rewrite the friendly path to the
     # real Swagger UI entrypoint.
     replace-wallet-swagger:
-      replacePathRegex:
-        regex: "^/wallet/api/docs(.*)"
-        replacement: "/swagger-ui/index.html"
+      replacePath:
+        path: "/swagger-ui.html"
 
     # Strip the unique Swagger prefix before forwarding to the service, so each
     # NestJS service sees its own /api/docs.
