@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: vietpay
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -80,8 +80,15 @@ services:
   # -------------------------------------------------- Java core (graded) -----
   wallet-service:
     build: ./wallet-service
-    env_file:
-      - ./infra/docker/wallet-service.env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/vietpay
+      DB_USER: vietpay
+      DB_PASSWORD: vietpay
+      REDIS_HOST: redis
+      KAFKA_BOOTSTRAP: kafka:9092
+      FX_URL: http://fx-service:3002
+      OUTBOX_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: docker
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -101,8 +108,29 @@ services:
   # ----------------------------------------------------- NestJS satellites ---
   user-service:
     build: ./user-service
-    env_file:
-      - ./infra/docker/user-service.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3004"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DB_DATABASE: vietpay_users
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "1"
+      JWT_PRIVATE_KEY_PATH: /app/keys/jwt-private.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/jwt-public.pem
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CLIENT_ID: user-service
+      KAFKA_USER_TOPIC: user-events
+      OTEL_SERVICE_NAME: user-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
+      SEED_ADMIN: "${SEED_ADMIN:-true}"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@vietpay.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:-dev-internal-token}
     volumes:
       # Mount the EC keypair read-only rather than baking the private key into
       # the image. In production this would be a secret / mounted vault path.
@@ -136,8 +164,21 @@ services:
 
   fx-service:
     build: ./fx-service
-    env_file:
-      - ./infra/docker/fx-service.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3002"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DB_DATABASE: vietpay_fx
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "2"
+      FX_REFRESH_CRON: "${FX_REFRESH_CRON:-*/5 * * * *}"
+      OTEL_SERVICE_NAME: fx-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -145,8 +186,26 @@ services:
 
   notification-service:
     build: ./notification-service
-    env_file:
-      - ./infra/docker/notification-service.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3003"
+      SMTP_HOST: ${SMTP_HOST:-smtp.resend.com}
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-false}"
+      SMTP_USER: ${SMTP_USER:-resend}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: "${SMTP_FROM:-VietPay <noreply@example.com>}"
+      SUPPORT_EMAIL: "${SUPPORT_EMAIL:-support@example.com}"
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CLIENT_ID: notification-service
+      KAFKA_GROUP_ID: notification-service
+      KAFKA_TRANSFER_TOPIC: transfer-events
+      KAFKA_USER_TOPIC: user-events
+      USER_SERVICE_URL: http://user-service:3004
+      SERVICE_JWT_PRIVATE_KEY: /app/keys/service-auth-private.pem
+      OTEL_SERVICE_NAME: notification-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
     volumes:
       - ./keys:/app/keys:ro
     depends_on:
@@ -164,8 +223,27 @@ services:
   # outbox. wallet-service consumes payment-events and posts the double-entry.
   payment-gateway:
     build: ./payment-gateway
-    env_file:
-      - ./infra/docker/payment-gateway.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3005"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DB_DATABASE: vietpay_payments
+      KAFKA_BROKER: kafka:9092
+      KAFKA_CLIENT_ID: payment-gateway
+      KAFKA_PAYMENT_TOPIC: payment-events
+      VISA_URL: http://visa-service:3006
+      MASTERCARD_URL: http://mastercard-service:3007
+      ACQUIRER_API_KEY: ${ACQUIRER_API_KEY:-dev-acquirer-key}
+      VISA_HMAC_SECRET: ${VISA_HMAC_SECRET:-visa-dev-secret}
+      MASTERCARD_HMAC_SECRET: ${MASTERCARD_HMAC_SECRET:-mc-dev-secret}
+      SELF_WEBHOOK_BASE_URL: http://payment-gateway:3005
+      OUTBOX_ENABLED: "true"
+      OTEL_SERVICE_NAME: payment-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy }
@@ -183,16 +261,36 @@ services:
   # the gateway calls them east-west, and they webhook back over the network.
   visa-service:
     build: ./acquirer-sim
-    env_file:
-      - ./infra/docker/visa-service.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3006"
+      SCHEME: VISA
+      ALLOWED_BINS: "${VISA_ALLOWED_BINS:-411111,424242,400000}"
+      HMAC_SECRET: ${VISA_HMAC_SECRET:-visa-dev-secret}
+      ACQUIRER_API_KEY: ${ACQUIRER_API_KEY:-dev-acquirer-key}
+      SETTLEMENT_DELAY_MS: "${SETTLEMENT_DELAY_MS:-1500}"
+      DECLINE_RATE: "${DECLINE_RATE:-0}"
+      OTEL_SERVICE_NAME: visa-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
     depends_on:
       - payment-gateway
     restart: unless-stopped
 
   mastercard-service:
     build: ./acquirer-sim
-    env_file:
-      - ./infra/docker/mastercard-service.env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOST: 0.0.0.0
+      PORT: "3007"
+      SCHEME: MASTERCARD
+      ALLOWED_BINS: "${MASTERCARD_ALLOWED_BINS:-510510,555555,520000,222100}"
+      HMAC_SECRET: ${MASTERCARD_HMAC_SECRET:-mc-dev-secret}
+      ACQUIRER_API_KEY: ${ACQUIRER_API_KEY:-dev-acquirer-key}
+      SETTLEMENT_DELAY_MS: "${SETTLEMENT_DELAY_MS:-1500}"
+      DECLINE_RATE: "${DECLINE_RATE:-0}"
+      OTEL_SERVICE_NAME: mastercard-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318/v1/traces}"
     depends_on:
       - payment-gateway
     restart: unless-stopped
