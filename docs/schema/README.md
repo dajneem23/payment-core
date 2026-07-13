@@ -20,10 +20,12 @@ in a bare Postgres.
 | `vietpay.sql` | `vietpay` | Money core: `wallets` (+ SYSTEM seed accounts: `card_clearing` + per-currency funding), `transfers`, `ledger_entries` (double-entry, one-source + non-negative CHECKs), `outbox_events`, `applied_payments`, `shedlock` |
 | `vietpay_fx.sql` | `vietpay_fx` | `fx_rates`, `fx_rate_snapshots` |
 | `vietpay_payments.sql` | `vietpay_payments` | `payments`, `processed_webhooks`, `outbox_events` |
+| `vietpay_users.sql` | `vietpay_users` | `users` (auth: email, password_hash, `role`, refresh-token hash) |
 | `init-all.sql` | — | psql one-shot: create roles + databases, then `\i` each snapshot |
 
-`vietpay_users` (auth) has no snapshot — user-service manages its schema via
-TypeORM `synchronize` in dev; start that service to create it.
+Every service now owns its schema through **checked-in migrations** — Flyway for
+wallet-service, TypeORM (`migrationsRun: true`, `synchronize: false`) for
+user-service, fx-service, and payment-gateway. No service relies on auto-create.
 
 ## Load it
 
