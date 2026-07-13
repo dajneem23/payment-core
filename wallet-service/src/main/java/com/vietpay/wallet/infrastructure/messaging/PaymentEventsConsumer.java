@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import com.vietpay.wallet.domain.exception.PoisonPaymentEventException;
 
 import java.math.BigDecimal;
 import java.util.UUID;

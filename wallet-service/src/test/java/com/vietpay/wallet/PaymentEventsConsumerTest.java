@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vietpay.wallet.application.payment.ApplyPaymentService;
 import com.vietpay.wallet.application.payment.CapturedPayment;
 import com.vietpay.wallet.infrastructure.messaging.PaymentEventsConsumer;
-import com.vietpay.wallet.infrastructure.messaging.PoisonPaymentEventException;
+import com.vietpay.wallet.domain.exception.PoisonPaymentEventException;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

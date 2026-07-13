@@ -1,4 +1,4 @@
-package com.vietpay.wallet.infrastructure.messaging;
+package com.vietpay.wallet.domain.exception;
 
 /**
  * A payment event that can never succeed on retry — malformed JSON, missing
